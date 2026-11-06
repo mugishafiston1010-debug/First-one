@@ -4,8 +4,10 @@ import { db } from "../db";
 import { customerMessage, type NotifyEvent } from "./messages";
 import { sendTelegram, sendWhatsApp, telegramEnabled, whatsappEnabled } from "./channels";
 
+/** Public address of the site. On Vercel it is found automatically if APP_URL is not set. */
 export function appUrl() {
-  return (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  return (process.env.APP_URL || (vercel ? `https://${vercel}` : "http://localhost:3000")).replace(/\/$/, "");
 }
 
 /** Send to the customer on every channel they have. Failures are logged, never thrown. */

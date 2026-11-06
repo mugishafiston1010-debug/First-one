@@ -49,7 +49,7 @@ Messages are sent after the page answers, so a slow Telegram never slows the sit
 
 ## Going online
 
-Step-by-step guide for Supabase + Vercel: [`../docs/02-go-online.md`](../docs/02-go-online.md). First admin is created at `/setup` with `SETUP_TOKEN`.
+Step-by-step guide (Vercel + its one-click Neon database): [`../docs/02-go-online.md`](../docs/02-go-online.md). Only `SESSION_SECRET` and `SETUP_TOKEN` are required; the site address is detected automatically and files are stored in the database until S3 is configured. First admin is created at `/setup`.
 
 ## Ledger
 

@@ -1,101 +1,75 @@
-# Putting Inzira online — step by step
+# Putting Inzira online — simple guide
 
-Everything below works from a phone browser. Total time: about 30–40 minutes.
-You will create 2 free accounts (Supabase and Vercel) and, optionally, a Telegram bot and an Anthropic API key.
-
-At the end your site is at an address like **https://inzira.vercel.app** (you can add your own domain later).
+You need **one account: Vercel** (sign in with GitHub). The database is created inside Vercel with one click.
+Everything works from a phone browser. Time: about 20 minutes.
 
 ---
 
-## Step 1 — Database and file storage (Supabase, free)
+## Level 1 — the site online
 
-1. Open **https://supabase.com** → **Start your project** → **Continue with GitHub**.
-2. **New project**
-   - Name: `inzira`
-   - Database password: press **Generate a password** and **save it** somewhere safe.
-   - Region: **Central EU (Frankfurt)**, the closest to both Russia and Rwanda.
-   - Press **Create new project** and wait about 2 minutes.
-3. **Connection strings:** press **Connect** at the top, then the **ORM** tab, then choose **Prisma**. You will see two lines:
-   - `DATABASE_URL=...` (port **6543**, ends with `?pgbouncer=true`) → copy it.
-   - `DIRECT_URL=...` (port **5432**) → copy it.
-   - In both, replace `[YOUR-PASSWORD]` with the password from step 2.
-4. **Private file bucket** (for receipts and passports): left menu **Storage** → **New bucket**
-   - Name: `inzira-files`
-   - **Public bucket: OFF** (very important: these are passports)
-   - Create.
-5. **Storage keys:** **Storage** → **Settings** (or **S3 Configuration**) → turn on **S3 connection** if it is off.
-   - Copy **Endpoint** (looks like `https://xxxx.supabase.co/storage/v1/s3`) and **Region** (e.g. `eu-central-1`).
-   - Press **New access key** → copy **Access key ID** and **Secret access key** (the secret is shown only once).
+### Step 1. Create the Vercel account
+1. Open **https://vercel.com/signup**
+2. Choose **Hobby**, type your name → **Continue with GitHub** → **Authorize Vercel**.
 
-## Step 2 — Telegram bot (free, 3 minutes, optional but recommended)
+### Step 2. Import the project
+1. On the Vercel dashboard press **Add New… → Project**.
+2. Next to **First-one** press **Import**. If you don't see it, press **Adjust GitHub App Permissions** and allow access to First-one.
+3. **Project Name:** `inzira`
+4. **Root Directory:** press **Edit** → select **`web`** → **Continue**. ⚠️ This is the most important setting.
+5. Open **Environment Variables** and add these 2:
 
-1. In Telegram open **@BotFather** → send `/newbot`.
-2. Name: `Inzira`. Username: for example `inzira_transfers_bot` (must end with `bot`).
-3. BotFather gives you a **token** like `7412345678:AAH...` → copy it.
-4. Your own chat ID, so the team alerts reach you: open **@userinfobot** → it replies with your **Id** (a number) → copy it.
-5. Open your new bot and press **Start** once (a bot cannot write to you before you do).
-
-## Step 3 — AI receipt check (optional, about $0.01–0.03 per receipt)
-
-1. Open **https://console.anthropic.com** → sign up → **Billing** → add credit ($5 is enough to start).
-2. **API keys** → **Create key** → copy it (starts with `sk-ant-`).
-
-Without this key everything still works: receipts are checked by hand, and duplicate receipt files are still caught.
-
-## Step 4 — The website (Vercel, free to start)
-
-1. Open **https://vercel.com** → **Sign up** → **Continue with GitHub**.
-2. **Add New… → Project** → find **First-one** → **Import**.
-3. **Root Directory:** press **Edit** → choose **`web`** → Continue. Very important.
-4. Open **Environment Variables** and add each line below (Name = left part, Value = right part):
-
-| Name | Value |
+| Key | Value |
 |---|---|
-| `DATABASE_URL` | from Step 1.3 (port 6543) |
-| `DIRECT_URL` | from Step 1.3 (port 5432) |
-| `SESSION_SECRET` | 64 random letters and digits (use a password generator) |
-| `SETUP_TOKEN` | another long random code; you need it once in Step 5 |
-| `APP_URL` | `https://inzira.vercel.app` (fix it after the first deploy if Vercel gives another address) |
-| `NEXT_PUBLIC_BRAND` | `Inzira` |
-| `NEXT_PUBLIC_WHATSAPP` | your support WhatsApp number, digits only, e.g. `79991234567` |
-| `NEXT_PUBLIC_TELEGRAM` | your support Telegram username without @ |
-| `S3_ENDPOINT` | from Step 1.5 |
-| `S3_REGION` | from Step 1.5 |
-| `S3_BUCKET` | `inzira-files` |
-| `S3_ACCESS_KEY_ID` | from Step 1.5 |
-| `S3_SECRET_ACCESS_KEY` | from Step 1.5 |
-| `TELEGRAM_BOT_TOKEN` | from Step 2.3 |
-| `TELEGRAM_BOT_USERNAME` | your bot's username without @ |
-| `TELEGRAM_WEBHOOK_SECRET` | random letters and digits (no spaces) |
-| `TELEGRAM_ADMIN_CHAT_ID` | from Step 2.4 |
-| `ANTHROPIC_API_KEY` | from Step 3.2 |
+| `SESSION_SECRET` | a long random code (64 letters/digits) |
+| `SETUP_TOKEN` | another long random code (you will type it once in Step 5) |
 
-5. Press **Deploy**. It takes 2–3 minutes. Vercel creates the database tables automatically during the build.
-6. When it shows **Congratulations**, press the picture of the site. Copy the address it opened.
-   If it is not the same as `APP_URL`, go to **Settings → Environment Variables**, fix `APP_URL`, then **Deployments → ⋯ → Redeploy**.
+6. Press **Deploy** and wait 2–3 minutes. It will finish even though there is no database yet.
 
-## Step 5 — First start (2 minutes)
+### Step 3. Create the database (one click)
+1. In your project open the **Storage** tab → **Create Database**.
+2. Choose **Neon** (Serverless Postgres) → **Continue**.
+3. Region: **Frankfurt (eu-central-1)**. Plan: **Free** → **Create**.
+4. When asked, **Connect** it to the project `inzira` (keep the environments ticked, and leave the prefix empty).
 
-1. Open **https://YOUR-ADDRESS/setup**
-2. Enter the `SETUP_TOKEN`, your name, your email and a strong admin password (12+ characters) → **Create admin**.
-3. You land on **Admin → Settings**. Check that each line is **on**.
-4. Press **Connect Telegram bot**, then **Send test message**. You should get a message from your bot.
-5. **Rates & fees:** set today's real market rate for RUB→RWF and RWF→RUB, and your margin and fees.
-6. **Pay-in accounts:** add your agents' real cards / SBP phones / MoMo numbers with daily limits.
-7. Open the site from another phone, create a customer account, and make a small real test transfer.
+### Step 4. Deploy again (this creates the tables)
+1. Open the **Deployments** tab → press **⋯** on the top line → **Redeploy** → **Redeploy**.
+2. Wait 2–3 minutes until it says **Ready**.
 
-`/setup` stops working by itself once an admin exists. You can then delete `SETUP_TOKEN` from Vercel.
+### Step 5. Open your site and create the admin
+1. Your address is shown on the project page, e.g. **https://inzira.vercel.app** (it may have extra letters).
+2. Open **https://YOUR-ADDRESS/setup**
+3. Type the `SETUP_TOKEN`, your name, your email and a strong password (12+ characters) → **Create admin**.
+4. In **Admin → Rates & fees**, set today's real rates. In **Pay-in accounts**, add the real cards/numbers of your agents and turn off the demo ones (there are none online, they exist only in the test copy).
+5. Open the site on another phone, create a customer account, and try a small transfer.
 
-## After launch
+✅ The site is online.
 
-- **Your own domain** (for example `inzira.rw` or `inzira.app`): Vercel → Project → **Settings → Domains** → add it and follow the DNS steps. Then update `APP_URL`, redeploy, and press **Connect Telegram bot** again.
-- **Updates:** every new commit pushed to the repository's default branch (now `claude/nifty-bell-5n9n7p`) is deployed by Vercel automatically.
-- **Backups:** Supabase free plan keeps daily backups for 7 days. Before handling real volume, move to a paid plan.
+---
+
+## Level 2 — extras (any time later)
+
+Add them in Vercel → **Settings → Environment Variables**, then **Redeploy**.
+
+**Telegram bot** (free)
+1. Telegram → **@BotFather** → `/newbot` → name `Inzira` → username, e.g. `inzira_transfers_bot` → copy the **token**.
+2. **@userinfobot** → copy your **Id**. Open your new bot and press **Start**.
+3. Add: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (without @), `TELEGRAM_ADMIN_CHAT_ID` (your Id), `TELEGRAM_WEBHOOK_SECRET` (random letters/digits).
+4. Redeploy → **Admin → Settings** → **Connect Telegram bot** → **Send test message**.
+
+**AI receipt check** (about $0.01–0.03 per receipt)
+1. **https://console.anthropic.com** → Billing → add $5 → API keys → Create key.
+2. Add `ANTHROPIC_API_KEY` → Redeploy.
+
+**Support contacts shown on the site:** `NEXT_PUBLIC_WHATSAPP` (digits only, e.g. `79991234567`) and `NEXT_PUBLIC_TELEGRAM` (username without @).
+
+**Your own domain** (e.g. `inzira.app`): Vercel → Settings → Domains. Then add `APP_URL=https://your-domain`, Redeploy, and press **Connect Telegram bot** again.
+
+**More file space:** receipts and passports are stored privately in the database (about 500 MB on the free plan, roughly 1,000+ uploads). When it fills up, add a private S3 bucket (Supabase Storage or Cloudflare R2) with the `S3_*` variables in `web/.env.example`.
+
+---
 
 ## Honest notes
-
-- **Vercel's free plan is for non-commercial use.** When you start earning, move to Vercel Pro ($20/month).
-- Supabase's free plan pauses a project after 1 week with no visits; open the site once a week while testing, or upgrade.
-- Russian bank cards cannot pay these foreign services. Use a card from Rwanda (or another country).
-- **WhatsApp messages** need a Meta WhatsApp Business account with a verified business and an approved message template. Telegram works right away, so start with Telegram.
-- Before taking real customers' money: register the business, sign a written agreement with every card agent, and have a lawyer check the Terms and Privacy pages.
+- Vercel and Neon free plans are for starting and testing. With real business volume: Vercel Pro ($20/month) and a paid Neon plan for backups.
+- Russian bank cards cannot pay these foreign services; use a Rwandan card.
+- WhatsApp messages need a Meta-approved WhatsApp Business account; use Telegram first.
+- Before taking real customers' money: register the business, sign agreements with your card agents, and have a lawyer check the Terms and Privacy pages.

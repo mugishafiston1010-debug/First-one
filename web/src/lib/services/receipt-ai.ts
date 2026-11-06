@@ -4,7 +4,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { db } from "../db";
-import { readUpload } from "../storage";
+import { readStoredFile } from "../storage";
 import { checkReceipt, type ReceiptData } from "../receipt-rules";
 
 export const AI_MODEL = process.env.AI_MODEL || "claude-opus-5-5";
@@ -40,8 +40,8 @@ function anthropic() {
 }
 
 /** Ask Claude to read the receipt file. Returns null if the model declined or output could not be parsed. */
-export async function readReceipt(file: { path: string; mimeType: string }): Promise<ReceiptData | null> {
-  const buf = await readUpload(file.path);
+export async function readReceipt(file: { path: string; mimeType: string; data?: Uint8Array | null }): Promise<ReceiptData | null> {
+  const buf = await readStoredFile(file);
   const data = buf.toString("base64");
   const media =
     file.mimeType === "application/pdf"

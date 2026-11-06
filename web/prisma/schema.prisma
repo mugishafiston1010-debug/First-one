@@ -232,6 +232,8 @@ model StoredFile {
   path      String
   /// SHA-256 of the content: the exact same file uploaded twice is detected without AI.
   sha256    String?
+  /// File content when stored in the database (simple hosting without S3).
+  data      Bytes?
   createdAt DateTime @default(now())
 
   @@index([sha256])

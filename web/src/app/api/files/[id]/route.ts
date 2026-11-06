@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { readUpload } from "@/lib/storage";
+import { readStoredFile } from "@/lib/storage";
 
 /** Files are private: only the owner, or an admin, can open them. */
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +16,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     allowed = !!(await db.order.findFirst({ where: { payoutProofFileId: file.id, userId: user.id } }));
   }
   if (!allowed) return new NextResponse("Not found", { status: 404 });
-  const body = await readUpload(file.path);
+  const body = await readStoredFile(file);
   return new NextResponse(new Uint8Array(body), {
     headers: {
       "Content-Type": file.mimeType,

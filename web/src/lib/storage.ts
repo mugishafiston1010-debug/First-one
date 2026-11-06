@@ -38,8 +38,14 @@ function s3() {
   };
 }
 
-export function storageMode(): "s3" | "local" {
-  return s3() ? "s3" : "local";
+/**
+ * Where files go: a private S3 bucket if configured; otherwise the database on hosting
+ * (Vercel has no permanent disk); otherwise the local disk (development).
+ */
+export function storageMode(): "s3" | "db" | "local" {
+  if (s3()) return "s3";
+  if (process.env.FILE_STORAGE === "db" || process.env.VERCEL) return "db";
+  return "local";
 }
 
 function localRoot() {
@@ -57,7 +63,13 @@ async function putObject(key: string, buf: Buffer, mime: string) {
   await writeFile(full, buf, { mode: 0o600 });
 }
 
-export async function readUpload(key: string): Promise<Buffer> {
+/** Read a stored file wherever it lives. */
+export async function readStoredFile(file: { path: string; data?: Uint8Array | null }): Promise<Buffer> {
+  if (file.data) return Buffer.from(file.data);
+  return readUpload(file.path);
+}
+
+async function readUpload(key: string): Promise<Buffer> {
   if (key.includes("..")) throw new Error("Bad path");
   const s = s3();
   if (s) {
@@ -80,6 +92,9 @@ export async function saveUpload(ownerId: string, kind: string, file: File) {
   if (!mime) throw new UploadError("Only JPG, PNG, WEBP, HEIC or PDF files are accepted");
   const sha256 = createHash("sha256").update(buf).digest("hex");
   const key = `${kind}/${randomUUID()}`;
+  if (storageMode() === "db") {
+    return db.storedFile.create({ data: { ownerId, kind, mimeType: mime, size: buf.length, path: `db:${key}`, sha256, data: buf } });
+  }
   await putObject(key, buf, mime);
   return db.storedFile.create({ data: { ownerId, kind, mimeType: mime, size: buf.length, path: key, sha256 } });
 }

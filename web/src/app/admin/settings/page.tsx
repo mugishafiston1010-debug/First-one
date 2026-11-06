@@ -25,7 +25,13 @@ export default function Settings() {
       <p className="text-sm text-muted">These are switched on with environment variables on your hosting (see the README). Nothing secret is shown here.</p>
       <div className="divide-y divide-line rounded-2xl border border-line bg-white">
         <Row ok={appUrl().startsWith("https://")} title="Public address" detail={`APP_URL = ${appUrl()}`} />
-        <Row ok={storageMode() === "s3"} title="Private file storage" detail={storageMode() === "s3" ? "Receipts and passports go to your S3 bucket." : "Files are on this server's disk. Fine for testing, not for real hosting."} />
+        <Row ok={storageMode() !== "local"} title="Private file storage" detail={
+            storageMode() === "s3"
+              ? "Receipts and passports go to your private S3 bucket."
+              : storageMode() === "db"
+                ? "Receipts and passports are stored privately in the database. Fine to start; move to S3 storage when you have many customers."
+                : "Files are on this computer's disk. Fine for testing only."
+          } />
         <Row ok={aiEnabled()} title="AI receipt check" detail={aiEnabled() ? `Model ${AI_MODEL}. Each receipt is read and compared with its order.` : "Add ANTHROPIC_API_KEY. Until then receipts are checked by hand only (duplicate files are still caught)."} />
         <Row ok={tg} title="Telegram bot" detail={tg ? `Bot @${process.env.TELEGRAM_BOT_USERNAME ?? "?"}. Customers connect from their home page.` : "Add TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME."} />
         <Row ok={tg && !!process.env.TELEGRAM_ADMIN_CHAT_ID} title="Team alerts in Telegram" detail="New orders, receipts with the AI verdict, identity checks. Needs TELEGRAM_ADMIN_CHAT_ID." />
