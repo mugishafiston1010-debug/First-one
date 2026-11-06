@@ -1,5 +1,6 @@
 "use client";
 import { useActionState } from "react";
+import { compressForm } from "@/lib/compress-client";
 import { submitKyc } from "@/app/actions/customer";
 
 type L = { dob: string; passportNo: string; nationality: string; passport: string; selfie: string; submit: string; done: string };
@@ -9,7 +10,7 @@ export function KycForm({ labels }: { labels: L }) {
   if (state?.ok) return <div className="notice">{labels.done}</div>;
   const file = "block w-full rounded-xl border border-dashed border-line bg-paper p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-2 file:font-semibold file:text-white";
   return (
-    <form action={action} className="space-y-4">
+    <form action={async (fd: FormData) => action(await compressForm(fd))} className="space-y-4">
       {state?.error && <div className="error" role="alert">{state.error}</div>}
       <div>
         <label className="label" htmlFor="dob">{labels.dob}</label>

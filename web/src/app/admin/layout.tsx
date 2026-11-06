@@ -10,6 +10,7 @@ const LINKS = [
   ["/admin/payin", "Pay-in accounts"],
   ["/admin/users", "Users"],
   ["/admin/ledger", "Ledger"],
+  ["/admin/settings", "Settings"],
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

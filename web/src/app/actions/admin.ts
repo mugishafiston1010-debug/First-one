@@ -135,3 +135,13 @@ export async function toggleSuspend(form: FormData) {
   await audit(admin.id, u.suspended ? "user.unsuspend" : "user.suspend", id);
   revalidatePath("/admin/users");
 }
+
+export async function rerunAiCheck(_: AdminState, form: FormData): Promise<AdminState> {
+  const admin = await requireAdmin();
+  const orderId = String(form.get("orderId"));
+  const { runReceiptCheck } = await import("@/lib/services/receipt-ai");
+  const r = await runReceiptCheck(orderId);
+  await audit(admin.id, "order.ai_recheck", orderId, { verdict: r.verdict });
+  revalidatePath("/admin", "layout");
+  return { ok: `AI: ${r.verdict}` };
+}

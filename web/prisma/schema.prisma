@@ -4,7 +4,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
+  /// Direct (non-pooled) connection, used for migrations. Same as DATABASE_URL locally.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -48,6 +50,10 @@ model User {
   locale       String     @default("en")
   suspended    Boolean    @default(false)
   createdAt    DateTime   @default(now())
+
+  /// Telegram chat that receives this user's notifications (set via the bot's /start link).
+  telegramChatId    String? @unique
+  telegramLinkToken String? @unique
 
   recipients     Recipient[]
   orders         Order[]
@@ -182,6 +188,14 @@ model Order {
   payoutReference   String?
   cancelReason      String?
 
+  /// AI receipt check: PASS (all matches), REVIEW (something to look at), FAIL (clear mismatch), ERROR (could not read).
+  aiVerdict    String?
+  aiReasons    Json?
+  aiData       Json?
+  aiCheckedAt  DateTime?
+  /// Bank transaction ID read from the receipt; the same ID on two orders means a reused receipt.
+  receiptTxnId String?
+
   payBy       DateTime
   createdAt   DateTime  @default(now())
   confirmedAt DateTime?
@@ -193,6 +207,7 @@ model Order {
   @@index([userId, createdAt])
   @@index([status])
   @@index([payInAccountId, createdAt])
+  @@index([receiptTxnId])
 }
 
 model OrderEvent {
@@ -215,7 +230,11 @@ model StoredFile {
   mimeType  String
   size      Int
   path      String
+  /// SHA-256 of the content: the exact same file uploaded twice is detected without AI.
+  sha256    String?
   createdAt DateTime @default(now())
+
+  @@index([sha256])
 }
 
 /// Double-entry ledger: each entry's postings sum to zero in every currency.

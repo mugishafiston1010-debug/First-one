@@ -86,6 +86,12 @@ export const ru: Dict = {
   "dash.kycPending": "Мы проверяем вашу личность. Обычно это занимает меньше суток.",
   "dash.kycRejected": "Проверка личности не пройдена. Попробуйте ещё раз.",
 
+  "dash.tgTitle": "Уведомления в Telegram",
+  "dash.tgDesc": "Мы напишем, когда оплата подтверждена и когда деньги доставлены.",
+  "dash.tgConnect": "Подключить Telegram",
+  "dash.tgConnected": "Telegram подключён. Обновления приходят туда.",
+  "dash.tgDisconnect": "Отключить",
+
   "send.step1": "Сумма",
   "send.step2": "Получатель",
   "send.step3": "Проверка",

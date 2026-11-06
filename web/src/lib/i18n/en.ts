@@ -84,6 +84,12 @@ export const en = {
   "dash.kycPending": "We are checking your identity. This usually takes less than a day.",
   "dash.kycRejected": "Your identity check was not accepted. Please try again.",
 
+  "dash.tgTitle": "Get updates in Telegram",
+  "dash.tgDesc": "We message you when your payment is confirmed and when the money is delivered.",
+  "dash.tgConnect": "Connect Telegram",
+  "dash.tgConnected": "Telegram connected. You get updates there.",
+  "dash.tgDisconnect": "Disconnect",
+
   "send.step1": "Amount",
   "send.step2": "Recipient",
   "send.step3": "Review",

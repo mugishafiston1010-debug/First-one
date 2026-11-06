@@ -6,6 +6,7 @@ import { expireStaleOrders, sentLast30Days } from "@/lib/services/orders";
 import { remainingLimit } from "@/lib/limits";
 import { formatMoney } from "@/lib/money";
 import { OrderRow } from "@/components/OrderRow";
+import { connectTelegram, disconnectTelegram } from "@/app/actions/telegram";
 
 export default async function Dashboard() {
   const user = await requireUser();
@@ -39,6 +40,24 @@ export default async function Dashboard() {
           <span className="text-xl">→</span>
         </Link>
       )}
+
+      {process.env.TELEGRAM_BOT_USERNAME &&
+        (user.telegramChatId ? (
+          <div className="card flex flex-wrap items-center justify-between gap-3 py-4">
+            <span className="text-sm">✅ {t("dash.tgConnected")}</span>
+            <form action={disconnectTelegram}>
+              <button className="text-sm font-semibold text-muted">{t("dash.tgDisconnect")}</button>
+            </form>
+          </div>
+        ) : (
+          <form action={connectTelegram} className="card flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-semibold">{t("dash.tgTitle")}</div>
+              <div className="text-sm text-muted">{t("dash.tgDesc")}</div>
+            </div>
+            <button className="btn bg-sky text-white hover:opacity-90">{t("dash.tgConnect")}</button>
+          </form>
+        ))}
 
       <section className="rounded-2xl border border-line bg-white">
         <div className="flex items-center justify-between px-5 pt-5 pb-3">

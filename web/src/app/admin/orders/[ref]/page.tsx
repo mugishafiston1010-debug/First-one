@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { fmtDate } from "@/lib/format";
 import { en } from "@/lib/i18n/en";
-import { adminOrderAction } from "@/app/actions/admin";
+import { adminOrderAction, rerunAiCheck } from "@/app/actions/admin";
+import { AiBadge } from "@/components/AiBadge";
 import { ActionForm } from "@/components/ActionForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CopyButton } from "@/components/CopyButton";
@@ -72,6 +73,39 @@ export default async function AdminOrder({ params }: { params: Promise<{ ref: st
             {o.payoutProofFileId && <a href={`/api/files/${o.payoutProofFileId}`} target="_blank" className="font-semibold text-brand">Payout proof ↗</a>}
           </div>
         </div>
+
+        {o.receiptFileId && (
+          <div className="card text-sm">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="font-bold">AI receipt check <AiBadge verdict={o.aiVerdict} /></h2>
+              {o.aiCheckedAt && <span className="text-xs text-muted">{fmtDate(o.aiCheckedAt, "en")}</span>}
+            </div>
+            {!o.aiVerdict && <p className="text-muted">Running… reload in a few seconds.</p>}
+            {Array.isArray(o.aiReasons) && (
+              <ul className="list-disc space-y-0.5 pl-5">
+                {(o.aiReasons as string[]).map((r) => (
+                  <li key={r} className={o.aiVerdict === "FAIL" ? "text-danger" : ""}>{r}</li>
+                ))}
+              </ul>
+            )}
+            {o.aiData && typeof o.aiData === "object" && (
+              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-paper p-3 text-xs">
+                {Object.entries(o.aiData as Record<string, unknown>).map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <dt className="text-muted">{k.replace(/_/g, " ")}</dt>
+                    <dd className="num break-all">{v === null ? "—" : String(v)}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            <p className="mt-2 text-xs text-muted">The AI only reads the receipt. Always check the money on the account before confirming.</p>
+            <div className="mt-2 max-w-48">
+              <ActionForm action={rerunAiCheck} submit="Check again">
+                <input type="hidden" name="orderId" value={o.id} />
+              </ActionForm>
+            </div>
+          </div>
+        )}
 
         <div className="card text-sm">
           <h2 className="mb-2 font-bold">Customer</h2>

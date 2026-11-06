@@ -8,6 +8,9 @@ import { nextStatus, OPEN_STATUSES, type OrderAction } from "../order-state";
 import { pickPayInAccount } from "../rotation";
 import { assertBalanced, deliveredPostings, paymentConfirmedPostings, refundPostings, type PostingSpec } from "../ledger-rules";
 import { MAX_OPEN_ORDERS, PAY_WINDOW_MIN, remainingLimit } from "../limits";
+import { appUrl, notifyCustomer, notifyTeam } from "../notify";
+import type { NotifyEvent } from "../notify/messages";
+import { formatMoney } from "../money";
 
 type Tx = Prisma.TransactionClient;
 
@@ -46,6 +49,7 @@ export async function expireStaleOrders(where: Prisma.OrderWhereInput = {}) {
       const n = await tx.order.updateMany({ where: { id: o.id, status: "AWAITING_PAYMENT" }, data: { status: "EXPIRED" } });
       if (n.count) await tx.orderEvent.create({ data: { orderId: o.id, status: "EXPIRED", note: "No payment before the deadline" } });
     });
+    notifyCustomer(o.id, "EXPIRED");
   }
 }
 
@@ -55,6 +59,15 @@ export async function expireStaleOrders(where: Prisma.OrderWhereInput = {}) {
  * push the same card over its daily limit.
  */
 export async function createOrder(userId: string, quoteId: string, recipientId: string): Promise<Order> {
+  const order = await createOrderTx(userId, quoteId, recipientId);
+  notifyCustomer(order.id, "CREATED");
+  notifyTeam(
+    `🆕 ${order.ref}: ${formatMoney(order.totalToPay, order.fromCurrency)} → ${formatMoney(order.receiveAmount, order.toCurrency)} for ${order.recipientName}\n${appUrl()}/admin/orders/${order.ref}`,
+  );
+  return order;
+}
+
+async function createOrderTx(userId: string, quoteId: string, recipientId: string): Promise<Order> {
   return db.$transaction(
     async (tx) => {
       const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
@@ -148,6 +161,26 @@ export async function transition(
   action: OrderAction,
   actor: { id: string | null; kind: "customer" | "admin" | "system" },
   extra: { note?: string; data?: Prisma.OrderUpdateInput } = {},
+) {
+  const updated = await transitionTx(orderId, action, actor, extra);
+  const event = EVENT_OF[action];
+  if (event) notifyCustomer(updated.id, event, extra.note);
+  return updated;
+}
+
+const EVENT_OF: Partial<Record<OrderAction, NotifyEvent>> = {
+  REJECT_RECEIPT: "RECEIPT_REJECTED",
+  CONFIRM_PAYMENT: "PAYMENT_CONFIRMED",
+  MARK_DELIVERED: "DELIVERED",
+  CANCEL: "CANCELLED",
+  REFUND: "REFUNDED",
+};
+
+async function transitionTx(
+  orderId: string,
+  action: OrderAction,
+  actor: { id: string | null; kind: "customer" | "admin" | "system" },
+  extra: { note?: string; data?: Prisma.OrderUpdateInput },
 ) {
   return db.$transaction(async (tx) => {
     // Lock the row so two admins cannot confirm the same order twice.

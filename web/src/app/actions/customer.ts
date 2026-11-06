@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { differenceInYears } from "date-fns";
-import type { PayMethod } from "@prisma/client";
+import { Prisma, type PayMethod } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getT } from "@/lib/i18n";
@@ -15,6 +15,8 @@ import { saveUpload, UploadError } from "@/lib/storage";
 import { TransitionError } from "@/lib/order-state";
 import { audit } from "@/lib/audit";
 import { tooMany } from "@/lib/rate-limit";
+import { appUrl, notifyTeam, runLater } from "@/lib/notify";
+import { runReceiptCheck } from "@/lib/services/receipt-ai";
 
 const METHODS = ["MOBILE_MONEY", "BANK_ACCOUNT", "CARD", "SBP_PHONE"] as const;
 
@@ -131,7 +133,16 @@ export async function uploadReceipt(_: ActionState, form: FormData): Promise<Act
   if (!order) return { error: t("common.error") };
   try {
     const file = await saveUpload(user.id, "receipt", form.get("file") as File);
-    await transition(order.id, "SUBMIT_RECEIPT", { id: user.id, kind: "customer" }, { data: { receiptFileId: file.id }, note: "Receipt uploaded" });
+    await transition(order.id, "SUBMIT_RECEIPT", { id: user.id, kind: "customer" }, { data: { receiptFileId: file.id, aiVerdict: null, aiReasons: Prisma.DbNull, aiData: Prisma.DbNull, aiCheckedAt: null }, note: "Receipt uploaded" });
+    // Read the receipt with AI after the response, then tell the team what it found.
+    runLater(async () => {
+      const r = await runReceiptCheck(order.id).catch((e) => {
+        console.error("receipt check failed", e);
+        return { verdict: "ERROR", reasons: ["Check failed"] };
+      });
+      const icon = r.verdict === "PASS" ? "✅" : r.verdict === "FAIL" ? "❌" : "⚠️";
+      notifyTeam(`🧾 Receipt ${order.ref} — AI ${icon} ${r.verdict}\n${r.reasons.join("\n")}\n${appUrl()}/admin/orders/${order.ref}`);
+    });
   } catch (e) {
     if (e instanceof UploadError) return { error: e.message };
     if (e instanceof TransitionError) return { error: t("order.expired") };
@@ -185,6 +196,7 @@ export async function submitKyc(_: ActionState, form: FormData): Promise<ActionS
     throw e;
   }
   await audit(user.id, "kyc.submit");
+  notifyTeam(`🪪 Identity check from ${user.fullName} (${user.email})\n${appUrl()}/admin/kyc`);
   revalidatePath("/app");
   return { ok: true };
 }

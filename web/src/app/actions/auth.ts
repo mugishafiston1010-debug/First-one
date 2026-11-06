@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { endSession, hashPassword, startSession, verifyPassword } from "@/lib/auth";
-import { getT } from "@/lib/i18n";
+import { getLocale, getT } from "@/lib/i18n";
 import { tooMany } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 
@@ -36,7 +36,7 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   const { fullName, email, phone, password } = parsed.data;
   if (await db.user.findUnique({ where: { email } })) return { error: t("auth.emailTaken") };
   const user = await db.user.create({
-    data: { fullName, email, phone: phone.replace(/[\s()-]/g, ""), passwordHash: await hashPassword(password) },
+    data: { fullName, email, phone: phone.replace(/[\s()-]/g, ""), passwordHash: await hashPassword(password), locale: await getLocale() },
   });
   await audit(user.id, "user.signup");
   await startSession(user);

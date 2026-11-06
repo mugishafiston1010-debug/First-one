@@ -1,11 +1,12 @@
 "use client";
 import { useActionState } from "react";
+import { compressForm } from "@/lib/compress-client";
 import { uploadReceipt } from "@/app/actions/customer";
 
 export function ReceiptUpload({ orderRef, labels }: { orderRef: string; labels: { title: string; hint: string; button: string } }) {
   const [state, action, pending] = useActionState(uploadReceipt, undefined);
   return (
-    <form action={action} className="space-y-3">
+    <form action={async (fd: FormData) => action(await compressForm(fd))} className="space-y-3">
       <h3 className="font-semibold">{labels.title}</h3>
       {state?.error && <div className="error" role="alert">{state.error}</div>}
       <input type="hidden" name="ref" value={orderRef} />

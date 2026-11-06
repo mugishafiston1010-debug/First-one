@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { expireStaleOrders } from "@/lib/services/orders";
 import { OrderRow } from "@/components/OrderRow";
 import { en } from "@/lib/i18n/en";
+import { AiBadge } from "@/components/AiBadge";
 
 const TABS: OrderStatus[] = ["PAYMENT_SUBMITTED", "PAYMENT_CONFIRMED", "AWAITING_PAYMENT", "DELIVERED", "EXPIRED", "CANCELLED", "REFUNDED"];
 
@@ -47,7 +48,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
       <div className="divide-y divide-line rounded-2xl border border-line bg-white">
         {orders.length === 0 && <p className="p-5 text-muted">Nothing here.</p>}
         {orders.map((o) => (
-          <OrderRow key={o.id} o={o} href={`/admin/orders/${o.ref}`} statusLabel={en[`order.status.${o.status}`]} locale="en" extra={<> · {o.user.fullName}</>} />
+          <OrderRow key={o.id} o={o} href={`/admin/orders/${o.ref}`} statusLabel={en[`order.status.${o.status}`]} locale="en" extra={<> · {o.user.fullName}<AiBadge verdict={o.aiVerdict} /></>} />
         ))}
       </div>
     </div>

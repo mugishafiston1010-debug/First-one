@@ -1,4 +1,7 @@
-# First-one
+# Inzira
 
-- `docs/01-ikamba-remit-analysis.md` — full study of the Ikamba Remit reference site.
-- `web/` — our money transfer platform (Russia ⇄ Rwanda). See `web/README.md` to run it.
+Money transfers between Russia and Rwanda.
+
+- `web/` — the platform. How it works and how to run it: `web/README.md`.
+- `docs/01-ikamba-remit-analysis.md` — study of the Ikamba Remit reference site.
+- `docs/02-go-online.md` — step-by-step guide to put Inzira online (Supabase + Vercel).
