@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum KycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// How money moves: a phone-based wallet, a bank account, a bank card, or a Russian SBP phone number.
+enum PayMethod {
+  MOBILE_MONEY
+  BANK_ACCOUNT
+  CARD
+  SBP_PHONE
+}
+
+enum OrderStatus {
+  AWAITING_PAYMENT
+  PAYMENT_SUBMITTED
+  PAYMENT_CONFIRMED
+  DELIVERED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         Role       @default(CUSTOMER)
+  kycStatus    KycStatus  @default(NONE)
+  locale       String     @default("en")
+  suspended    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  recipients     Recipient[]
+  orders         Order[]
+  quotes         Quote[]
+  kycSubmissions KycSubmission[]
+  files          StoredFile[]
+}
+
+model KycSubmission {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  dateOfBirth   DateTime
+  passportNo    String
+  nationality   String
+  passportFile  String
+  selfieFile    String
+  status        KycStatus @default(PENDING)
+  reviewerNote  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([status])
+}
+
+model Recipient {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  fullName      String
+  country       String
+  currency      String
+  method        PayMethod
+  provider      String
+  accountNumber String
+  archived      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  orders Order[]
+
+  @@index([userId])
+}
+
+/// One sending route, e.g. RUB -> RWF, with its rate and price settings.
+model Corridor {
+  id            String   @id @default(cuid())
+  fromCurrency  String
+  toCurrency    String
+  enabled       Boolean  @default(true)
+  /// Market rate: 1 fromCurrency = midRate toCurrency.
+  midRate       Decimal  @db.Decimal(20, 8)
+  /// Our margin on the rate, in basis points (100 = 1%).
+  marginBps     Int
+  fixedFee      Decimal  @db.Decimal(20, 2)
+  percentFeeBps Int
+  minSend       Decimal  @db.Decimal(20, 2)
+  maxSend       Decimal  @db.Decimal(20, 2)
+  rateUpdatedAt DateTime @default(now())
+
+  quotes Quote[]
+  orders Order[]
+
+  @@unique([fromCurrency, toCurrency])
+}
+
+/// A locked price, valid for a short time.
+model Quote {
+  id            String   @id @default(cuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  corridorId    String
+  corridor      Corridor @relation(fields: [corridorId], references: [id])
+  sendAmount    Decimal  @db.Decimal(20, 2)
+  fee           Decimal  @db.Decimal(20, 2)
+  totalToPay    Decimal  @db.Decimal(20, 2)
+  midRate       Decimal  @db.Decimal(20, 8)
+  customerRate  Decimal  @db.Decimal(20, 8)
+  receiveAmount Decimal  @db.Decimal(20, 2)
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime @default(now())
+}
+
+/// An account our customers pay into: an agent's card, SBP phone or MoMo number.
+model PayInAccount {
+  id            String    @id @default(cuid())
+  label         String
+  currency      String
+  method        PayMethod
+  provider      String
+  holderName    String
+  accountNumber String
+  dailyLimit    Decimal   @db.Decimal(20, 2)
+  perOrderLimit Decimal   @db.Decimal(20, 2)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  orders Order[]
+}
+
+model Order {
+  id     String      @id @default(cuid())
+  ref    String      @unique
+  userId String
+  user   User        @relation(fields: [userId], references: [id])
+  status OrderStatus @default(AWAITING_PAYMENT)
+
+  corridorId    String
+  corridor      Corridor @relation(fields: [corridorId], references: [id])
+  fromCurrency  String
+  toCurrency    String
+  sendAmount    Decimal  @db.Decimal(20, 2)
+  fee           Decimal  @db.Decimal(20, 2)
+  totalToPay    Decimal  @db.Decimal(20, 2)
+  midRate       Decimal  @db.Decimal(20, 8)
+  customerRate  Decimal  @db.Decimal(20, 8)
+  receiveAmount Decimal  @db.Decimal(20, 2)
+
+  recipientId       String
+  recipient         Recipient @relation(fields: [recipientId], references: [id])
+  /// Copy of the recipient at order time, so later edits never change a past order.
+  recipientName     String
+  recipientMethod   PayMethod
+  recipientProvider String
+  recipientAccount  String
+
+  payInAccountId String
+  payInAccount   PayInAccount @relation(fields: [payInAccountId], references: [id])
+
+  receiptFileId     String?
+  payoutProofFileId String?
+  payoutReference   String?
+  cancelReason      String?
+
+  payBy       DateTime
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+  deliveredAt DateTime?
+
+  events  OrderEvent[]
+  entries JournalEntry[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([payInAccountId, createdAt])
+}
+
+model OrderEvent {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id])
+  status    OrderStatus
+  actorId   String?
+  note      String?
+  createdAt DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model StoredFile {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  kind      String
+  mimeType  String
+  size      Int
+  path      String
+  createdAt DateTime @default(now())
+}
+
+/// Double-entry ledger: each entry's postings sum to zero in every currency.
+model LedgerAccount {
+  id       String    @id @default(cuid())
+  code     String    @unique
+  name     String
+  currency String
+  postings Posting[]
+}
+
+model JournalEntry {
+  id        String    @id @default(cuid())
+  orderId   String?
+  order     Order?    @relation(fields: [orderId], references: [id])
+  memo      String
+  createdAt DateTime  @default(now())
+  postings  Posting[]
+}
+
+model Posting {
+  id        String        @id @default(cuid())
+  entryId   String
+  entry     JournalEntry  @relation(fields: [entryId], references: [id])
+  accountId String
+  account   LedgerAccount @relation(fields: [accountId], references: [id])
+  /// Positive = debit, negative = credit.
+  amount    Decimal       @db.Decimal(20, 2)
+
+  @@index([accountId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  target    String?
+  data      Json?
+  createdAt DateTime @default(now())
+}

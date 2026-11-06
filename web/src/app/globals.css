@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Colours inspired by the Rwandan flag: deep green, sky blue, sun yellow. */
+@theme {
+  --color-ink: #10231a;
+  --color-muted: #5b6b63;
+  --color-line: #e2e8e4;
+  --color-paper: #f6f8f6;
+  --color-brand: #17663f;
+  --color-brand-dark: #0f4a2d;
+  --color-brand-soft: #e6f2ea;
+  --color-sky: #0a8fd0;
+  --color-sun: #f5c400;
+  --color-danger: #b42318;
+  --color-warn: #b54708;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
+
+@utility card { @apply rounded-2xl border border-line bg-white p-5 sm:p-6; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-[15px] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed; }
+@utility btn-primary { @apply btn bg-brand text-white hover:bg-brand-dark; }
+@utility btn-ghost { @apply btn border border-line bg-white text-ink hover:bg-paper; }
+@utility btn-danger { @apply btn border border-red-200 bg-white text-danger hover:bg-red-50; }
+@utility input { @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-[16px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20; }
+@utility label { @apply mb-1.5 block text-sm font-medium text-ink; }
+@utility hint { @apply mt-1 text-xs text-muted; }
+@utility error { @apply rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-danger; }
+@utility notice { @apply rounded-xl border border-brand/20 bg-brand-soft px-4 py-3 text-sm text-brand-dark; }
+@utility num { @apply font-mono tabular-nums; }
+@utility h1 { @apply text-3xl font-bold tracking-tight sm:text-4xl; }
+@utility h2 { @apply text-xl font-bold tracking-tight sm:text-2xl; }
