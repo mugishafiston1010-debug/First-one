@@ -1,0 +1,338 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  /// Direct (non-pooled) connection, used for migrations. Same as DATABASE_URL locally.
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────── Admin ───────────────────────────────
+
+/// OWNER manages everything including other admins. EDITOR manages content and reviews submissions.
+enum AdminRole {
+  OWNER
+  EDITOR
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole @default(EDITOR)
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  guides       Guide[]
+  reviewed     BusinessSubmission[]
+  auditEntries AuditLog[]
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  adminId   String?
+  admin     AdminUser? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?
+  createdAt DateTime   @default(now())
+
+  @@index([createdAt])
+}
+
+// ─────────────────────────────── Trust ───────────────────────────────
+
+/// Where a piece of information comes from. Shown to readers as a label.
+enum TrustLevel {
+  OFFICIAL // taken from a government, university or other official source
+  EDITORIAL // written by the AfroStart team
+  VERIFIED_PROVIDER // supplied by a business the team has verified
+  STUDENT // contributed by a student, not independently checked
+  SPONSORED // paid content
+}
+
+// ─────────────────────────────── Places ───────────────────────────────
+
+model City {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  region         String?
+  tagline        String?
+  intro          String
+  transportInfo  String?
+  imageUrl       String?
+  imageCredit    String?
+  published      Boolean   @default(false)
+  sortOrder      Int       @default(100)
+  lastVerifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  universities University[]
+  resources    CityResource[]
+  guides       Guide[]
+  businesses   Business[]
+  submissions  BusinessSubmission[]
+}
+
+model University {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  shortName      String?
+  cityId         String
+  city           City      @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  websiteUrl     String?
+  description    String?
+  published      Boolean   @default(true)
+  lastVerifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([cityId])
+}
+
+enum CityResourceKind {
+  ACCOMMODATION
+  TRANSPORT
+  USEFUL_LOCATION
+  LOCAL_RESOURCE
+  OTHER
+}
+
+model CityResource {
+  id             String           @id @default(cuid())
+  cityId         String
+  city           City             @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  kind           CityResourceKind
+  title          String
+  description    String
+  url            String?
+  address        String?
+  trust          TrustLevel       @default(EDITORIAL)
+  published      Boolean          @default(true)
+  lastVerifiedAt DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([cityId, kind])
+}
+
+// ─────────────────────────────── Guides ───────────────────────────────
+
+enum GuideStage {
+  BEFORE_TRAVEL
+  AFTER_ARRIVAL
+  STUDENT_LIFE
+}
+
+model GuideCategory {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  stage       GuideStage
+  sortOrder   Int        @default(100)
+  guides      Guide[]
+}
+
+/// One row per language. Guides that are translations of each other share the same slug.
+model Guide {
+  id             String        @id @default(cuid())
+  slug           String
+  locale         String        @default("en")
+  title          String
+  summary        String
+  /// Markdown-lite body: paragraphs, "## " headings, "- " lists.
+  body           String
+  categoryId     String
+  category       GuideCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  cityId         String?
+  city           City?         @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  /// Country the guide is about (e.g. "Russia", "Rwanda"). Free text.
+  country        String?
+  trust          TrustLevel    @default(EDITORIAL)
+  published      Boolean       @default(false)
+  publishedAt    DateTime?
+  lastVerifiedAt DateTime?
+  authorId       String?
+  author         AdminUser?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  sources GuideSource[]
+
+  @@unique([slug, locale])
+  @@index([published, locale])
+}
+
+model GuideSource {
+  id      String @id @default(cuid())
+  guideId String
+  guide   Guide  @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  label   String
+  url     String
+  sort    Int    @default(0)
+}
+
+// ─────────────────────────────── Businesses ───────────────────────────────
+
+enum BusinessCategory {
+  ACCOMMODATION
+  FOOD_GROCERY
+  RESTAURANT
+  TRANSLATION
+  TUTORING
+  TRANSPORT
+  STUDENT_SUPPORT
+  OTHER
+}
+
+/// A public directory listing. Only created by an admin (directly or by approving a submission).
+/// `verified` = the team checked the business is real. It is never sold.
+/// Paid visibility lives in SponsoredPlacement and is always labelled "Sponsored".
+model Business {
+  id           String           @id @default(cuid())
+  slug         String           @unique
+  name         String
+  description  String
+  category     BusinessCategory
+  cityId       String
+  city         City             @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  address      String?
+  phone        String?
+  email        String?
+  website      String?
+  telegram     String?
+  whatsapp     String?
+  instagram    String?
+  vk           String?
+  openingHours String?
+  logoUrl      String?
+  published    Boolean          @default(false)
+  publishedAt  DateTime?
+  verified     Boolean          @default(false)
+  verifiedAt   DateTime?
+  /// Editor's pick. Free; not paid.
+  featured     Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  placements SponsoredPlacement[]
+  submission BusinessSubmission?
+
+  @@index([published, cityId, category])
+}
+
+enum SponsoredSlot {
+  DIRECTORY_TOP
+  HOMEPAGE
+  CITY_PAGE
+}
+
+/// A paid placement for a period of time. No payments are processed by the app; the admin records the deal here.
+model SponsoredPlacement {
+  id         String        @id @default(cuid())
+  businessId String
+  business   Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  slot       SponsoredSlot
+  startsAt   DateTime
+  endsAt     DateTime
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  @@index([slot, startsAt, endsAt])
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BusinessSubmission {
+  id           String           @id @default(cuid())
+  name         String
+  category     BusinessCategory
+  cityId       String?
+  city         City?            @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  /// When the city is not in our list yet.
+  cityOther    String?
+  description  String
+  address      String?
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  website      String?
+  status       SubmissionStatus @default(PENDING)
+  reviewNote   String?
+  reviewedById String?
+  reviewedBy   AdminUser?       @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  businessId   String?          @unique
+  business     Business?        @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  /// Salted hash of the sender's IP, only for spam control.
+  ipHash       String?
+  createdAt    DateTime         @default(now())
+
+  @@index([status, createdAt])
+}
+
+// ─────────────────────────────── Opportunities ───────────────────────────────
+
+enum OpportunityType {
+  SCHOLARSHIP
+  ADMISSION
+  COMPETITION
+  INTERNSHIP
+  EVENT
+  PROGRAMME
+}
+
+/// Stored status. "Expired" is never stored: it is computed from the deadline (see src/lib/opportunity-status.ts).
+enum OpportunityStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+model Opportunity {
+  id                 String            @id @default(cuid())
+  slug               String            @unique
+  title              String
+  type               OpportunityType
+  summary            String
+  description        String
+  eligibility        String
+  /// e.g. "All African countries", "Rwanda". Free text so nothing is guessed.
+  countryEligibility String
+  deadline           DateTime?
+  applyUrl           String
+  sourceName         String
+  sourceUrl          String
+  trust              TrustLevel        @default(OFFICIAL)
+  status             OpportunityStatus @default(DRAFT)
+  lastVerifiedAt     DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([status, deadline])
+}
+
+// ─────────────────────────────── Newsletter ───────────────────────────────
+
+/// Only an email address and the time of consent. Unsubscribe deletes the row.
+model Subscriber {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  locale      String   @default("en")
+  token       String   @unique
+  consentedAt DateTime @default(now())
+}
