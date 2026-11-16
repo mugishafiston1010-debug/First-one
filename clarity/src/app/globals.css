@@ -1,0 +1,212 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/newsreader";
+@import "@fontsource-variable/newsreader/wght-italic.css";
+
+:root {
+  --bg: #f4f2ec;
+  --surface: #fbfaf6;
+  --raised: #ffffff;
+  --sunken: #ebe8df;
+  --ink: #1b1a17;
+  --ink-2: #57534b;
+  --ink-3: #8b877d;
+  --line: #e3dfd4;
+  --line-strong: #cdc8ba;
+  --accent: #c4421c;
+  --accent-ink: #9c3112;
+  --accent-soft: #f7e4da;
+  --on-accent: #fffaf6;
+  --shadow: 0 1px 2px rgb(40 30 10 / 0.04), 0 8px 24px -12px rgb(40 30 10 / 0.12);
+  --shadow-lg: 0 24px 60px -20px rgb(30 20 5 / 0.28);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141311;
+    --surface: #1a1917;
+    --raised: #211f1d;
+    --sunken: #0f0e0d;
+    --ink: #efece4;
+    --ink-2: #b6b1a5;
+    --ink-3: #807c72;
+    --line: #2c2a26;
+    --line-strong: #403d37;
+    --accent: #ee7448;
+    --accent-ink: #f59b79;
+    --accent-soft: #38201a;
+    --on-accent: #1a0f0a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 24px 60px -20px rgb(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: fade 0.25s ease both;
+  --animate-slide-in: slide-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-sheet: sheet 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheet {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+@keyframes check-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "calt";
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Fields that sit inside a container which shows the focus state itself. */
+.bare-focus:focus-visible {
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+.font-display {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  letter-spacing: -0.012em;
+  font-weight: 450;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.stagger > * {
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(n + 6) { animation-delay: 200ms; }
+
+.progress-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.progress-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  background: var(--accent);
+  border-radius: inherit;
+  animation: sweep 1.3s ease-in-out infinite;
+}
+
+.check-pop {
+  animation: check-pop 0.28s ease both;
+}
+
+mark.cite {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 2px;
+  padding: 1px 0;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+dialog {
+  color: var(--ink);
+}
+dialog::backdrop {
+  background: rgb(20 16 10 / 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
