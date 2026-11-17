@@ -60,6 +60,35 @@ model User {
   quotes         Quote[]
   kycSubmissions KycSubmission[]
   files          StoredFile[]
+  passwordResets PasswordReset[]
+}
+
+/// One-time password reset link, made by an admin and sent to the customer (e.g. on WhatsApp).
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  /// Only the SHA-256 of the token is stored, so a database leak cannot be used to reset passwords.
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdBy String?
+  createdAt DateTime  @default(now())
+}
+
+/// Business settings an admin can change without redeploying.
+model AppSetting {
+  id              String   @id @default("main")
+  /// WhatsApp support number, digits only with country code, e.g. 79991234567
+  supportWhatsapp String   @default("")
+  /// Telegram support username without @
+  supportTelegram String   @default("")
+  /// Off = customers cannot create new orders (e.g. no agents available)
+  acceptingOrders Boolean  @default(true)
+  /// Short message shown at the top of every page (empty = none)
+  noticeEn        String   @default("")
+  noticeRu        String   @default("")
+  updatedAt       DateTime @updatedAt
 }
 
 model KycSubmission {

@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -12,6 +13,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { sentLast30Days } from "@/lib/services/orders";
 
 export default async function AdminOrder({ params }: { params: Promise<{ ref: string }> }) {
+  await requireAdmin();
   const { ref } = await params;
   const o = await db.order.findUnique({
     where: { ref },

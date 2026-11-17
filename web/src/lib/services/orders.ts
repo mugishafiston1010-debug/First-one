@@ -11,11 +11,12 @@ import { MAX_OPEN_ORDERS, PAY_WINDOW_MIN, remainingLimit } from "../limits";
 import { appUrl, notifyCustomer, notifyTeam } from "../notify";
 import type { NotifyEvent } from "../notify/messages";
 import { formatMoney } from "../money";
+import { getSettings } from "../settings";
 
 type Tx = Prisma.TransactionClient;
 
 export class OrderError extends Error {
-  constructor(public code: "QUOTE_EXPIRED" | "LIMIT" | "TOO_MANY_OPEN" | "NO_PAYIN" | "NOT_FOUND" | "SUSPENDED" | "BAD_RECIPIENT") {
+  constructor(public code: "PAUSED" | "QUOTE_EXPIRED" | "LIMIT" | "TOO_MANY_OPEN" | "NO_PAYIN" | "NOT_FOUND" | "SUSPENDED" | "BAD_RECIPIENT") {
     super(code);
   }
 }
@@ -59,6 +60,7 @@ export async function expireStaleOrders(where: Prisma.OrderWhereInput = {}) {
  * push the same card over its daily limit.
  */
 export async function createOrder(userId: string, quoteId: string, recipientId: string): Promise<Order> {
+  if (!(await getSettings()).acceptingOrders) throw new OrderError("PAUSED");
   const order = await createOrderTx(userId, quoteId, recipientId);
   notifyCustomer(order.id, "CREATED");
   notifyTeam(

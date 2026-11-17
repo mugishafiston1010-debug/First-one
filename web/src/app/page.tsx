@@ -5,12 +5,13 @@ import { getT, type TKey } from "@/lib/i18n";
 import { calcLabels } from "@/lib/calc-labels";
 import { currentUser } from "@/lib/auth";
 import { CURRENCIES, priceTransfer } from "@/lib/money";
-import { whatsappLink } from "@/lib/brand";
+import { getSettings, whatsappUrl } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [{ t, locale }, corridors, user] = await Promise.all([getT(), enabledCorridors(), currentUser()]);
+  const [{ t, locale }, corridors, user, appSettings] = await Promise.all([getT(), enabledCorridors(), currentUser(), getSettings()]);
+  const wa = whatsappUrl(appSettings);
   const settings = corridors.map(settingsOf);
   const sendHref = user ? "/app/send" : "/signup";
 
@@ -110,7 +111,7 @@ export default async function Home() {
         <h2 className="text-xl font-bold">{t("home.ctaTitle")}</h2>
         <div className="flex gap-2">
           <Link href={sendHref} className="btn bg-white text-brand hover:bg-brand-soft">{t("nav.send")}</Link>
-          <a href={whatsappLink()} target="_blank" rel="noreferrer" className="btn border border-white/40 text-white hover:bg-white/10">WhatsApp</a>
+          {wa && <a href={wa} target="_blank" rel="noreferrer" className="btn border border-white/40 text-white hover:bg-white/10">WhatsApp</a>}
         </div>
       </section>
     </div>

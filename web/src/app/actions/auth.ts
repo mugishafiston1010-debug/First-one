@@ -14,7 +14,14 @@ function safeNext(v: FormDataEntryValue | null): string | null {
   return /^\/app(\/[\w\-/?=&.%]*)?$/.test(s) && !s.startsWith("//") ? s : null;
 }
 
-export type FormState = { error?: string } | undefined;
+export type FormState = { error?: string; values?: Record<string, string> } | undefined;
+
+/** Keep what the person typed (never the password) so a failed submit does not empty the form. */
+function keep(form: FormData): Record<string, string> {
+  const v: Record<string, string> = {};
+  for (const [k, x] of form.entries()) if (typeof x === "string" && !/password|next|^\$/.test(k)) v[k] = x;
+  return v;
+}
 
 async function clientIp() {
   const h = await headers();
@@ -30,11 +37,15 @@ const signUpSchema = z.object({
 
 export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   const { t } = await getT();
-  if (tooMany(`signup:${await clientIp()}`, 10, 60 * 60_000)) return { error: t("auth.tooMany") };
+  if (tooMany(`signup:${await clientIp()}`, 10, 60 * 60_000)) return { error: t("auth.tooMany"), values: keep(form) };
   const parsed = signUpSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: t("common.error") + " (" + parsed.error.issues.map((i) => i.path.join(".")).join(", ") + ")" };
+  if (!parsed.success) {
+    const label: Record<string, Parameters<typeof t>[0]> = { fullName: "auth.fullName", email: "auth.email", phone: "auth.phone", password: "auth.passwordHint" };
+    const fields = [...new Set(parsed.error.issues.map((i) => String(i.path[0])))].map((f) => (label[f] ? t(label[f]) : f));
+    return { error: `${t("common.check")}: ${fields.join(", ")}`, values: keep(form) };
+  }
   const { fullName, email, phone, password } = parsed.data;
-  if (await db.user.findUnique({ where: { email } })) return { error: t("auth.emailTaken") };
+  if (await db.user.findUnique({ where: { email } })) return { error: t("auth.emailTaken"), values: keep(form) };
   const user = await db.user.create({
     data: { fullName, email, phone: phone.replace(/[\s()-]/g, ""), passwordHash: await hashPassword(password), locale: await getLocale() },
   });
@@ -48,14 +59,14 @@ const signInSchema = z.object({ email: z.string().trim().toLowerCase().email(), 
 export async function signIn(_: FormState, form: FormData): Promise<FormState> {
   const { t } = await getT();
   const parsed = signInSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: t("auth.badLogin") };
+  if (!parsed.success) return { error: t("auth.badLogin"), values: keep(form) };
   const { email, password } = parsed.data;
   if (tooMany(`signin:${email}`, 8, 15 * 60_000) || tooMany(`signin-ip:${await clientIp()}`, 30, 15 * 60_000))
-    return { error: t("auth.tooMany") };
+    return { error: t("auth.tooMany"), values: keep(form) };
   const user = await db.user.findUnique({ where: { email } });
   // Same message and similar timing whether or not the email exists.
   const ok = user ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, "$2a$12$" + "x".repeat(53));
-  if (!user || !ok) return { error: t("auth.badLogin") };
+  if (!user || !ok) return { error: t("auth.badLogin"), values: keep(form) };
   await audit(user.id, "user.signin");
   await startSession(user);
   redirect(safeNext(form.get("next")) ?? (user.role === "ADMIN" ? "/admin" : "/app"));

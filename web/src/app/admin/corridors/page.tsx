@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { updateCorridor } from "@/app/actions/admin";
 import { ActionForm } from "@/components/ActionForm";
@@ -6,6 +7,7 @@ import { settingsOf } from "@/lib/services/pricing";
 import { fmtDate } from "@/lib/format";
 
 export default async function Corridors() {
+  await requireAdmin();
   const list = await db.corridor.findMany({ orderBy: { fromCurrency: "asc" } });
   return (
     <div className="space-y-4">

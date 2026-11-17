@@ -6,17 +6,18 @@ import { expireStaleOrders } from "@/lib/services/orders";
 import { formatMoney } from "@/lib/money";
 import { fmtDate } from "@/lib/format";
 import { stepOf } from "@/lib/order-state";
-import { whatsappLink } from "@/lib/brand";
+import { getSettings, telegramUrl, whatsappUrl } from "@/lib/settings";
 import { cancelOrder } from "@/app/actions/customer";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CopyButton } from "@/components/CopyButton";
 import { Countdown } from "@/components/Countdown";
 import { ReceiptUpload } from "@/components/ReceiptUpload";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
 export default async function OrderPage({ params }: { params: Promise<{ ref: string }> }) {
   const user = await requireUser();
   const { ref } = await params;
-  const { t, locale } = await getT();
+  const [{ t, locale }, settings] = await Promise.all([getT(), getSettings()]);
   await expireStaleOrders({ userId: user.id, ref });
   const o = await db.order.findFirst({
     where: { ref, userId: user.id },
@@ -31,6 +32,7 @@ export default async function OrderPage({ params }: { params: Promise<{ ref: str
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
+      {(o.status === "PAYMENT_SUBMITTED" || o.status === "PAYMENT_CONFIRMED") && <AutoRefresh seconds={15} />}
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm text-muted">{t("order.ref")}</div>
@@ -114,9 +116,7 @@ export default async function OrderPage({ params }: { params: Promise<{ ref: str
         </ol>
       </div>
 
-      <a href={whatsappLink(`${t("order.ref")} ${o.ref}`)} target="_blank" rel="noreferrer" className="btn-ghost w-full">
-        {t("order.help")} (WhatsApp)
-      </a>
+      <SupportButtons wa={whatsappUrl(settings, `${t("order.ref")} ${o.ref}`)} tg={telegramUrl(settings)} label={t("order.help")} />
     </div>
   );
 }
@@ -129,6 +129,19 @@ function Line({ k, v, copy, mono, strong }: { k: string; v: string; copy?: { val
         <span className={`truncate text-right ${mono ? "num" : ""} ${strong ? "font-semibold" : "font-medium"}`}>{v}</span>
         {copy && <CopyButton {...copy} />}
       </span>
+    </div>
+  );
+}
+
+function SupportButtons({ wa, tg, label }: { wa: string | null; tg: string | null; label: string }) {
+  if (!wa && !tg) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-center text-sm text-muted">{label}</p>
+      <div className="flex gap-2">
+        {wa && <a href={wa} target="_blank" rel="noreferrer" className="btn-ghost flex-1">WhatsApp</a>}
+        {tg && <a href={tg} target="_blank" rel="noreferrer" className="btn-ghost flex-1">Telegram</a>}
+      </div>
     </div>
   );
 }

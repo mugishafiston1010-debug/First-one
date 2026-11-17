@@ -73,6 +73,19 @@ export const en = {
   "auth.tooMany": "Too many attempts. Try again in a few minutes.",
   "auth.terms": "By creating an account you agree to the Terms and the Privacy Policy.",
 
+  "auth.forgot": "Forgot password?",
+  "forgot.title": "Forgot your password?",
+  "forgot.text": "Write to our support with the email of your account. We will check that it is you and send you a link to set a new password.",
+  "forgot.message": "Hello, I forgot my password. My account email is:",
+  "forgot.noSupport": "Support contacts are not set yet. Please try again later.",
+  "reset.title": "Set a new password",
+  "reset.password": "New password",
+  "reset.confirm": "Repeat the new password",
+  "reset.button": "Save new password",
+  "reset.mismatch": "The two passwords are different",
+  "reset.invalid": "This link is not valid or has expired. Ask support for a new one.",
+  "reset.done": "Your password was changed. You can sign in now.",
+
   "dash.hello": "Hello",
   "dash.newTransfer": "New transfer",
   "dash.recent": "Recent transfers",
@@ -107,6 +120,7 @@ export const en = {
   "send.limitReached": "This is above your current limit. Verify your identity to send more.",
   "send.tooManyOpen": "You have too many open transfers. Finish or cancel one first.",
   "send.noAccount": "We cannot take payments in this currency right now. Please try a smaller amount or write to support.",
+  "send.paused": "We are not taking new transfers right now. Please try again later or write to us.",
   "send.back": "Back",
 
   "method.MOBILE_MONEY": "Mobile money",
@@ -170,6 +184,7 @@ export const en = {
   "kyc.pending": "Your documents were sent. We will check them, usually within a day.",
   "kyc.approved": "Your identity is verified.",
 
+  "common.check": "Please check",
   "common.save": "Save",
   "common.error": "Something went wrong. Please try again.",
   "common.required": "Required",

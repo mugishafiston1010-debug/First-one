@@ -1,8 +1,10 @@
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { reviewKyc } from "@/app/actions/admin";
 import { fmtDate } from "@/lib/format";
 
 export default async function Kyc() {
+  await requireAdmin();
   const list = await db.kycSubmission.findMany({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" }, include: { user: true } });
   return (
     <div className="space-y-4">

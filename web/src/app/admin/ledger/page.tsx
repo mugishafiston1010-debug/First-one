@@ -1,7 +1,9 @@
+import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Decimal } from "@/lib/money";
 
 export default async function Ledger() {
+  await requireAdmin();
   const [accounts, sums] = await Promise.all([
     db.ledgerAccount.findMany({ orderBy: { code: "asc" } }),
     db.posting.groupBy({ by: ["accountId"], _sum: { amount: true } }),

@@ -4,6 +4,7 @@ import { getT } from "@/lib/i18n";
 import { enabledCorridors, settingsOf } from "@/lib/services/pricing";
 import { wizardLabels } from "@/lib/wizard-labels";
 import { SendWizard } from "./SendWizard";
+import { getSettings } from "@/lib/settings";
 
 export const metadata = { title: "Send money" };
 
@@ -16,6 +17,7 @@ export default async function SendPage({ searchParams }: { searchParams: Promise
     searchParams,
   ]);
   if (corridors.length === 0) return <p className="text-muted">{t("calc.unavailable")}</p>;
+  if (!(await getSettings()).acceptingOrders) return <div className="notice mx-auto max-w-lg">{t("send.paused")}</div>;
   return (
     <SendWizard
       corridors={corridors.map(settingsOf)}

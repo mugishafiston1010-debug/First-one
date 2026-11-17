@@ -1,9 +1,12 @@
+import { requireAdmin } from "@/lib/auth";
 import { aiEnabled, AI_MODEL } from "@/lib/services/receipt-ai";
 import { telegramEnabled, whatsappEnabled } from "@/lib/notify/channels";
 import { storageMode } from "@/lib/storage";
 import { appUrl } from "@/lib/notify";
 import { registerTelegramWebhook, sendTestToTeam } from "@/app/actions/telegram";
 import { ActionForm } from "@/components/ActionForm";
+import { saveBusinessSettings } from "@/app/actions/admin";
+import { getSettings } from "@/lib/settings";
 
 function Row({ ok, title, detail }: { ok: boolean; title: string; detail: string }) {
   return (
@@ -17,11 +20,43 @@ function Row({ ok, title, detail }: { ok: boolean; title: string; detail: string
   );
 }
 
-export default function Settings() {
+export default async function Settings() {
+  await requireAdmin();
   const tg = telegramEnabled();
+  const s = await getSettings();
   return (
     <div className="space-y-4">
       <h1 className="h1">Settings</h1>
+      <div className="card max-w-xl">
+        <h2 className="mb-3 font-bold">Business</h2>
+        <ActionForm action={saveBusinessSettings} submit="Save">
+          <label className={`flex items-center gap-3 rounded-xl border p-3 ${s.acceptingOrders ? "border-brand/30 bg-brand-soft" : "border-red-200 bg-red-50"}`}>
+            <input type="checkbox" name="acceptingOrders" defaultChecked={s.acceptingOrders} className="h-5 w-5" />
+            <span>
+              <b>Accepting new transfers</b>
+              <span className="block text-xs text-muted">Untick to pause (e.g. no agents available). Open orders continue normally.</span>
+            </span>
+          </label>
+          <div>
+            <label className="label" htmlFor="wa">Support WhatsApp number</label>
+            <input id="wa" name="supportWhatsapp" defaultValue={s.supportWhatsapp} placeholder="79991234567" inputMode="tel" className="input num" />
+            <p className="hint">With country code, digits only. Shown on every page and in orders.</p>
+          </div>
+          <div>
+            <label className="label" htmlFor="tgu">Support Telegram username</label>
+            <input id="tgu" name="supportTelegram" defaultValue={s.supportTelegram} placeholder="inzira_support" className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor="ne">Notice on top of the site (English, optional)</label>
+            <input id="ne" name="noticeEn" defaultValue={s.noticeEn} placeholder="e.g. Transfers to Airtel are slower today" className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor="nr">Notice (Russian, optional)</label>
+            <input id="nr" name="noticeRu" defaultValue={s.noticeRu} className="input" />
+          </div>
+        </ActionForm>
+      </div>
+      <h2 className="pt-2 text-lg font-bold">Connections</h2>
       <p className="text-sm text-muted">These are switched on with environment variables on your hosting (see the README). Nothing secret is shown here.</p>
       <div className="divide-y divide-line rounded-2xl border border-line bg-white">
         <Row ok={appUrl().startsWith("https://")} title="Public address" detail={`APP_URL = ${appUrl()}`} />

@@ -1,12 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 
-/** First gate: no valid session, no access to /app or /admin. Pages re-check role and suspension from the database. */
+/**
+ * First gate: no valid session, no access to /app or /admin.
+ * The role is NOT checked here (the cookie can be older than a role change):
+ * admin pages check the role in the database on every request.
+ */
 export async function middleware(req: NextRequest) {
   const s = await readSession(req.cookies.get(SESSION_COOKIE)?.value);
-  const { pathname } = req.nextUrl;
   if (!s) return NextResponse.redirect(new URL("/signin", req.url));
-  if (pathname.startsWith("/admin") && s.role !== "ADMIN") return NextResponse.redirect(new URL("/app", req.url));
   return NextResponse.next();
 }
 

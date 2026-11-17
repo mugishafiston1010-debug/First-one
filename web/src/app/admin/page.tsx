@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth";
 import Link from "next/link";
 import type { OrderStatus } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -5,10 +6,12 @@ import { expireStaleOrders } from "@/lib/services/orders";
 import { OrderRow } from "@/components/OrderRow";
 import { en } from "@/lib/i18n/en";
 import { AiBadge } from "@/components/AiBadge";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
 const TABS: OrderStatus[] = ["PAYMENT_SUBMITTED", "PAYMENT_CONFIRMED", "AWAITING_PAYMENT", "DELIVERED", "EXPIRED", "CANCELLED", "REFUNDED"];
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+  await requireAdmin();
   const sp = await searchParams;
   await expireStaleOrders();
   const status = (TABS.includes(sp.status as OrderStatus) ? sp.status : "PAYMENT_SUBMITTED") as OrderStatus;
@@ -27,6 +30,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
   const count = (s: OrderStatus) => counts.find((c) => c.status === s)?._count ?? 0;
   return (
     <div className="space-y-4">
+      {!q && <AutoRefresh seconds={30} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="h1">Orders</h1>
         <form className="flex gap-2">

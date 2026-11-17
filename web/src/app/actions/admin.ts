@@ -145,3 +145,33 @@ export async function rerunAiCheck(_: AdminState, form: FormData): Promise<Admin
   revalidatePath("/admin", "layout");
   return { ok: `AI: ${r.verdict}` };
 }
+
+export async function toggleAdmin(form: FormData) {
+  const admin = await requireAdmin();
+  const id = String(form.get("id"));
+  if (id === admin.id) return; // never remove your own access by mistake
+  const u = await db.user.findUniqueOrThrow({ where: { id } });
+  await db.user.update({ where: { id }, data: { role: u.role === "ADMIN" ? "CUSTOMER" : "ADMIN" } });
+  await audit(admin.id, u.role === "ADMIN" ? "user.remove_admin" : "user.make_admin", id);
+  revalidatePath("/admin/users");
+}
+
+const settingsSchema = z.object({
+  supportWhatsapp: z.string().trim().max(20).transform((v) => v.replace(/\D/g, "")),
+  supportTelegram: z.string().trim().max(40).transform((v) => v.replace(/^@/, "").replace(/^https?:\/\/t\.me\//, "")),
+  noticeEn: z.string().trim().max(300),
+  noticeRu: z.string().trim().max(300),
+});
+
+export async function saveBusinessSettings(_: AdminState, form: FormData): Promise<AdminState> {
+  const admin = await requireAdmin();
+  const p = settingsSchema.safeParse(Object.fromEntries(form));
+  if (!p.success) return { error: "Check the values" };
+  if (p.data.supportWhatsapp && !/^\d{10,15}$/.test(p.data.supportWhatsapp)) return { error: "WhatsApp: full number with country code, e.g. 79991234567" };
+  if (p.data.supportTelegram && !/^[A-Za-z0-9_]{5,32}$/.test(p.data.supportTelegram)) return { error: "Telegram: username only, e.g. inzira_support" };
+  const data = { ...p.data, acceptingOrders: form.get("acceptingOrders") === "on" };
+  await db.appSetting.upsert({ where: { id: "main" }, update: data, create: { id: "main", ...data } });
+  await audit(admin.id, "settings.update", "main", data);
+  revalidatePath("/", "layout");
+  return { ok: "Saved" };
+}

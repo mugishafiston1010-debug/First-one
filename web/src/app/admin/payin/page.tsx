@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth";
 import { startOfDay } from "date-fns";
 import { db } from "@/lib/db";
 import { createPayIn, togglePayIn } from "@/app/actions/admin";
@@ -5,6 +6,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { formatMoney } from "@/lib/money";
 
 export default async function PayIn() {
+  await requireAdmin();
   const [list, used] = await Promise.all([
     db.payInAccount.findMany({ orderBy: [{ currency: "asc" }, { createdAt: "asc" }] }),
     db.order.groupBy({

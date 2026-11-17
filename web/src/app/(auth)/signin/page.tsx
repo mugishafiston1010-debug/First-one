@@ -26,7 +26,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
             { name: "password", label: t("auth.password"), type: "password", autoComplete: "current-password" },
           ]}
         />
-        <p className="mt-5 text-sm text-muted">
+        <Link href="/forgot" className="mt-4 block text-sm font-semibold text-brand">{t("auth.forgot")}</Link>
+        <p className="mt-4 text-sm text-muted">
           {t("auth.noAccount")} <Link href={qs ? `/signup?${qs}` : "/signup"} className="font-semibold text-brand">{t("nav.signup")}</Link>
         </p>
       </div>

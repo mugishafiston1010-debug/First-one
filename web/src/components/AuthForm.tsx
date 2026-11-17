@@ -23,7 +23,16 @@ export function AuthForm({
       {fields.map((f) => (
         <div key={f.name}>
           <label className="label" htmlFor={f.name}>{f.label}</label>
-          <input id={f.name} name={f.name} type={f.type ?? "text"} required autoComplete={f.autoComplete} className="input" />
+          <input
+            key={`${f.name}-${state?.error ?? ""}-${state?.values?.[f.name] ?? ""}`}
+            id={f.name}
+            name={f.name}
+            type={f.type ?? "text"}
+            required
+            autoComplete={f.autoComplete}
+            defaultValue={f.type === "password" ? undefined : state?.values?.[f.name]}
+            className="input"
+          />
           {f.hint && <p className="hint">{f.hint}</p>}
         </div>
       ))}

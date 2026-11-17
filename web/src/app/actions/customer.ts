@@ -109,6 +109,7 @@ export async function placeOrder(quoteId: string, recipientId: string): Promise<
   } catch (e) {
     if (e instanceof OrderError) {
       const map: Partial<Record<OrderError["code"], Parameters<typeof t>[0]>> = {
+        PAUSED: "send.paused",
         QUOTE_EXPIRED: "send.quoteExpired",
         LIMIT: "send.limitReached",
         TOO_MANY_OPEN: "send.tooManyOpen",
