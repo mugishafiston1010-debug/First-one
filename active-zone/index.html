@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- app:start -->
+<title>Активная зона</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Math&family=Unbounded:wght@500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/temml.min.js"></script>
+<style>
+/* Layout: one working column. The reactor-pool card (navy with a Cherenkov-blue glow) is the
+   only loud object: it holds the game stage. Rooms are quiet surfaces with a coloured room mark. */
+:root {
+  --bg: #EDF2F7;
+  --surface: #FFFFFF;
+  --tint: #F4F7FB;
+  --ink: #0C1A2C;
+  --muted: #56677E;
+  --line: #D3DCE8;
+  --accent: #0A58C4;
+  --accent-ink: #FFFFFF;
+  --pool: #071A33;
+  --pool-ink: #EAF4FF;
+  --pool-muted: #8FB0D4;
+  --glow: #1C8DFF;
+  --bad: #C2352A;
+  --warn: #A86400;
+  --good: #1B8348;
+  --r-math: #5B4BD6;
+  --r-phys: #0A7FB8;
+  --r-chem: #1B8348;
+  --r-mech: #B5530C;
+  --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-math: "Noto Sans Math", "Cambria Math", "STIX Two Math", math;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #050E1A; --surface: #0B1A2D; --tint: #0E2036; --ink: #E3EDF8; --muted: #8A9EB6; --line: #1B2F47;
+    --accent: #56B4FF; --accent-ink: #04121F;
+    --pool: #08203F; --pool-ink: #EAF4FF; --pool-muted: #8FB0D4; --glow: #2A9BFF;
+    --bad: #FF7F72; --warn: #F0B04A; --good: #4CC98A;
+    --r-math: #A99BFF; --r-phys: #4FC3F7; --r-chem: #4CC98A; --r-mech: #F5A35C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #050E1A; --surface: #0B1A2D; --tint: #0E2036; --ink: #E3EDF8; --muted: #8A9EB6; --line: #1B2F47;
+  --accent: #56B4FF; --accent-ink: #04121F;
+  --pool: #08203F; --pool-ink: #EAF4FF; --pool-muted: #8FB0D4; --glow: #2A9BFF;
+  --bad: #FF7F72; --warn: #F0B04A; --good: #4CC98A;
+  --r-math: #A99BFF; --r-phys: #4FC3F7; --r-chem: #4CC98A; --r-mech: #F5A35C;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+math { font-family: var(--font-math); font-size: 1.12em; }
+math .gap { border: 1.5px dashed currentColor; border-radius: 6px; padding: 0 3px; opacity: 0.9; }
+math .gapok { color: var(--good); }
+.pool math .gapok { color: #6EE7A8; }
+
+.wrap {
+  max-width: 760px; margin: 0 auto;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px;
+}
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brand h1 { margin: 0; font: 700 1.5rem/1.1 var(--font-display); letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--muted); font-size: 0.875rem; }
+.status { display: flex; gap: 14px; font: 500 0.75rem/1 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.status b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { background: none; border: 0; padding: 10px 14px; color: var(--muted); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+.view { display: flex; flex-direction: column; gap: 16px; }
+.label { font: 500 0.6875rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h2 { margin: 0; font: 600 1.125rem/1.3 var(--font-body); text-wrap: balance; }
+h3 { margin: 0; font: 600 1rem/1.3 var(--font-body); text-wrap: balance; }
+.hint { color: var(--muted); font-size: 0.875rem; margin: 0; max-width: 65ch; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--surface); flex-wrap: wrap; }
+.seg button { background: none; border: 0; border-radius: 7px; padding: 5px 12px; font-size: 0.8125rem; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; color: var(--muted); font-size: 0.875rem; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rc, var(--muted)); opacity: 0.45; }
+.chip[aria-pressed="true"] { background: var(--surface); border-color: var(--rc, var(--accent)); color: var(--ink); }
+.chip[aria-pressed="true"] .dot { opacity: 1; }
+.r-math { --rc: var(--r-math); } .r-phys { --rc: var(--r-phys); } .r-chem { --rc: var(--r-chem); } .r-mech { --rc: var(--r-mech); }
+
+.btn { background: var(--accent); color: var(--accent-ink); border: 1px solid var(--accent); border-radius: 12px; padding: 11px 18px; font-weight: 600; }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+.btn.ghost:hover { border-color: var(--muted); filter: none; }
+.btn.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+.btn.small { padding: 7px 12px; font-size: 0.875rem; border-radius: 10px; }
+kbd { font: 400 0.6875rem/1 var(--font-mono); opacity: 0.7; margin-left: 8px; }
+@media (hover: none) { kbd, .keys { display: none !important; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* Rooms */
+.rooms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 560px) { .rooms { grid-template-columns: 1fr; } }
+.room { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; position: relative; overflow: hidden; }
+.room::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--rc); }
+.room:hover { border-color: var(--rc); }
+.room .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.room .name { font: 500 1.0625rem/1.2 var(--font-display); }
+.room .count { font: 500 0.75rem/1 var(--font-mono); color: var(--muted); white-space: nowrap; }
+.room .sub { color: var(--muted); font-size: 0.875rem; margin: 0; }
+.room .tip { margin: 0; font-size: 0.875rem; border-top: 1px solid var(--line); padding-top: 10px; }
+.room .tip b { color: var(--rc); font-weight: 600; }
+.stack { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); gap: 2px; }
+.stack i { display: block; min-width: 0; }
+.c-new { background: var(--line); } .c-learning { background: var(--warn); } .c-maturing { background: var(--accent); } .c-stable { background: var(--good); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8125rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.legend i.c-new { background: var(--muted); opacity: 0.5; }
+.legend b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.roomhead { display: flex; flex-direction: column; gap: 10px; padding-left: 14px; border-left: 4px solid var(--rc); }
+.back { align-self: flex-start; background: none; border: 0; padding: 0; color: var(--accent); font-weight: 500; font-size: 0.875rem; }
+.tipbox { background: var(--tint); border-radius: 12px; padding: 12px 14px; font-size: 0.9375rem; }
+.tipbox .label { color: var(--rc); display: block; margin-bottom: 4px; }
+.topic { display: flex; flex-direction: column; gap: 10px; }
+.topic > .label { padding-top: 6px; }
+.fcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fcard .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.fcard h3 { min-width: 0; }
+.formula { background: var(--tint); border-radius: 12px; padding: 14px 12px; overflow-x: auto; text-align: center; font-size: 1.15rem; position: relative; }
+.formula.veiled math { filter: blur(9px); opacity: 0.55; }
+.formula .reveal { position: absolute; inset: 0; margin: auto; width: max-content; height: max-content; }
+.facts { display: grid; gap: 8px; margin: 0; }
+.facts div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 10px; font-size: 0.9375rem; }
+.facts dt { font: 500 0.6875rem/1.9 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; min-width: 0; }
+.facts .trap dt { color: var(--bad); }
+.facts .npp dt { color: var(--accent); }
+@media (max-width: 520px) { .facts div { grid-template-columns: 1fr; gap: 0; } }
+.pill { font: 500 0.6875rem/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; color: var(--muted); }
+.pill.s-learning { color: var(--warn); } .pill.s-maturing { color: var(--accent); } .pill.s-stable { color: var(--good); }
+
+/* Games */
+.games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 560px) { .games { grid-template-columns: 1fr; } }
+.game { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.game:hover { border-color: var(--accent); }
+.game.hero { grid-column: 1 / -1; background: radial-gradient(110% 120% at 100% 120%, var(--glow) 0%, transparent 55%), var(--pool); color: var(--pool-ink); border-color: transparent; }
+.game.hero .hint, .game.hero .best { color: var(--pool-muted); }
+.game .name { font: 500 1.0625rem/1.2 var(--font-display); }
+.game .best { font: 500 0.75rem/1 var(--font-mono); color: var(--muted); }
+.game:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.stage {
+  position: relative;
+  background: radial-gradient(120% 85% at 50% 118%, var(--glow) 0%, transparent 62%), var(--pool);
+  color: var(--pool-ink); border-radius: 22px; padding: clamp(18px, 4vw, 30px);
+  display: flex; flex-direction: column; gap: 18px; overflow: hidden; min-height: 320px;
+}
+.stage .label { color: var(--pool-muted); }
+.hud { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.hud .cell { display: flex; flex-direction: column; gap: 4px; }
+.hud b { font: 500 1.25rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.hud .crit b { color: #FF9A8F; }
+.rho { display: flex; flex-direction: column; gap: 6px; }
+.rho .bar { position: relative; height: 10px; border-radius: 5px; background: rgba(234, 244, 255, 0.12); overflow: hidden; }
+.rho .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #4CC98A, #F0B04A 60%, #FF7F72); transition: width 0.3s ease; }
+.rho .scale { display: flex; justify-content: space-between; font: 400 0.6875rem/1 var(--font-mono); color: var(--pool-muted); }
+.timer { height: 4px; border-radius: 2px; background: rgba(234, 244, 255, 0.14); overflow: hidden; }
+.timer i { display: block; height: 100%; background: var(--pool-ink); }
+.timer.low i { background: #FF9A8F; }
+.q { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.q .ask { margin: 0; font-size: 0.9375rem; color: var(--pool-muted); }
+.q .big { font-size: clamp(1.15rem, 3.6vw, 1.6rem); overflow-x: auto; padding-block: 6px; text-align: center; }
+.q .unitq { margin: 0; font: 600 clamp(1.3rem, 4.4vw, 1.8rem)/1.2 var(--font-body); text-wrap: balance; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.opt {
+  background: rgba(234, 244, 255, 0.07); border: 1px solid rgba(234, 244, 255, 0.22); color: var(--pool-ink);
+  border-radius: 12px; padding: 12px 10px; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 1rem; overflow-x: auto; min-width: 0;
+}
+.opt:hover:not(:disabled) { background: rgba(234, 244, 255, 0.14); border-color: rgba(234, 244, 255, 0.5); }
+.opt .k { font: 400 0.6875rem/1 var(--font-mono); color: var(--pool-muted); }
+.opt.right { border-color: #6EE7A8; background: rgba(76, 201, 138, 0.18); }
+.opt.wrong { border-color: #FF9A8F; background: rgba(255, 127, 114, 0.18); }
+.opt:disabled { cursor: default; }
+.tf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tf .opt { font-weight: 600; min-height: 64px; }
+.fb { border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; background: rgba(234, 244, 255, 0.08); border: 1px solid rgba(234, 244, 255, 0.18); }
+.fb.ok { border-color: rgba(110, 231, 168, 0.6); }
+.fb.no { border-color: rgba(255, 154, 143, 0.6); }
+.fb strong.ok { color: #6EE7A8; } .fb strong.no { color: #FF9A8F; }
+.fb p { margin: 0; font-size: 0.9375rem; }
+.fb .muted { color: var(--pool-muted); }
+.fb .f { overflow-x: auto; text-align: center; font-size: 1.1rem; padding-block: 4px; }
+.stage .btn { background: var(--pool-ink); color: var(--pool); border-color: var(--pool-ink); }
+.stage .btn.ghost { background: transparent; color: var(--pool-ink); border-color: rgba(234, 244, 255, 0.35); }
+.flash { position: absolute; right: 18px; top: 18px; font: 500 0.875rem/1 var(--font-mono); color: #6EE7A8; animation: up 0.7s ease both; }
+@keyframes up { from { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; } to { opacity: 0; transform: translateY(-14px); } }
+.scram { animation: scram 0.5s ease 2; }
+@keyframes scram { 50% { box-shadow: inset 0 0 0 3px #FF7F72; } }
+@media (prefers-reduced-motion: reduce) { .flash, .scram { animation: none; } .rho .bar i { transition: none; } }
+.endlist { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.endlist li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9375rem; border-top: 1px solid rgba(234, 244, 255, 0.14); padding-top: 8px; }
+.endlist li span:last-child { color: var(--pool-muted); white-space: nowrap; }
+
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); min-width: 0; }
+.tile b { font: 500 1.5rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.roomrow { display: grid; grid-template-columns: 7rem minmax(0, 1fr) 4rem; gap: 12px; align-items: center; font-size: 0.9375rem; }
+.roomrow span:last-child { text-align: right; font: 500 0.8125rem/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.roomrow .stack { height: 10px; }
+textarea { background: var(--tint); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; width: 100%; resize: vertical; min-height: 90px; font: 400 0.8125rem/1.4 var(--font-mono); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 0.875rem; max-width: calc(100% - 32px); z-index: 20; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Активная зона</h1>
+      <p>Формулы 2-го курса АЭС: запомнить один раз и навсегда</p>
+    </div>
+    <div class="status" aria-live="polite">
+      <span>К повтору <b id="st-due">0</b></span>
+      <span>Серия <b id="st-streak">0</b></span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Разделы">
+    <button role="tab" data-tab="rooms" id="tab-rooms" aria-selected="true">Аудитории</button>
+    <button role="tab" data-tab="games" id="tab-games" aria-selected="false">Игры</button>
+    <button role="tab" data-tab="progress" id="tab-progress" aria-selected="false">Прогресс</button>
+  </nav>
+
+  <div class="row" id="where">
+    <div class="seg" id="seg-sem" role="group" aria-label="Семестр">
+      <button data-v="3">3 семестр</button><button data-v="4">4 семестр</button><button data-v="0">Все темы</button>
+    </div>
+    <span class="hint" id="sem-note"></span>
+  </div>
+
+  <section class="view" id="view-rooms" aria-labelledby="tab-rooms"></section>
+  <section class="view" id="view-games" aria-labelledby="tab-games" hidden></section>
+  <section class="view" id="view-progress" aria-labelledby="tab-progress" hidden></section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const T = String.raw;
+
+/* ======================= CONTENT ======================= */
+const ROOMS = [
+  { id: 'math', name: 'Математика', sub: 'Кратные и криволинейные интегралы, теория поля, ряды, ДУ, ТФКП, вероятность' },
+  { id: 'phys', name: 'Физика', sub: 'Электричество и магнетизм, колебания, оптика, квантовая и ядерная физика' },
+  { id: 'chem', name: 'Химия', sub: 'Термодинамика, равновесие, кинетика, растворы, электрохимия' },
+  { id: 'mech', name: 'Механика', sub: 'Статика, кинематика, динамика, Лагранж, сопротивление материалов' },
+];
+
+/* \gap marks the blank in a fill-in question */
+const CARDS = [
+/* ---------- МАТЕМАТИКА ---------- */
+{ id: 'm1', r: 'math', s: 3, topic: 'Кратные интегралы', name: 'Двойной интеграл в полярных координатах',
+  tex: T`\iint_D f(x,y)\,dx\,dy=\iint_{D'} f(r\cos\varphi,\,r\sin\varphi)\,r\,dr\,d\varphi`,
+  hook: 'Якобиан равен r. Клетка полярной сетки — кусочек кольца: ширина dr, длина дуги r·dφ. Чем дальше от центра, тем клетка больше.',
+  npp: 'Средняя мощность по сечению цилиндрической активной зоны: интегрируют по кругу именно так.',
+  trap: 'Забыть множитель r. Самая частая потеря баллов на контрольной.',
+  gap: { tex: T`\iint_D f\,dx\,dy=\iint_{D'} f(r\cos\varphi,\,r\sin\varphi)\,\gap\,dr\,d\varphi`, a: T`r`, o: [T`r^2`, T`1`, T`\varphi`] },
+  bad: [{ tex: T`\iint_D f(x,y)\,dx\,dy=\iint_{D'} f(r\cos\varphi,\,r\sin\varphi)\,dr\,d\varphi`, why: 'Пропущен якобиан r.' },
+        { tex: T`\iint_D f(x,y)\,dx\,dy=\iint_{D'} f(r\cos\varphi,\,r\sin\varphi)\,r^2\,dr\,d\varphi`, why: 'r² бывает в сферических координатах (r² sin θ), а в полярных якобиан r.' }] },
+{ id: 'm2', r: 'math', s: 3, topic: 'Кратные интегралы', name: 'Элемент объёма в сферических координатах',
+  tex: T`dV=r^2\sin\theta\,dr\,d\theta\,d\varphi`,
+  hook: 'Кусочек глобуса: r·dθ вдоль меридиана, r·sin θ·dφ вдоль параллели, dr в толщину. Перемножь три стороны: «эр-квадрат-синус-тэта».',
+  npp: 'Поток от точечного источника нейтронов, масса сферической топливной микросферы.',
+  trap: 'Если θ отсчитан от оси z, нужен sin θ, а не cos θ: на полюсе клетка вырождается в точку.',
+  gap: { tex: T`dV=\gap\,dr\,d\theta\,d\varphi`, a: T`r^2\sin\theta`, o: [T`r\sin\theta`, T`r^2\cos\theta`, T`r^2`] },
+  bad: [{ tex: T`dV=r\sin\theta\,dr\,d\theta\,d\varphi`, why: 'Потерян один r: обе угловые стороны клетки содержат r.' },
+        { tex: T`dV=r^2\cos\theta\,dr\,d\theta\,d\varphi`, why: 'При θ от оси z нужен sin θ.' }] },
+{ id: 'm3', r: 'math', s: 3, topic: 'Криволинейные интегралы', name: 'Формула Грина',
+  tex: T`\oint_L P\,dx+Q\,dy=\iint_D\left(\frac{\partial Q}{\partial x}-\frac{\partial P}{\partial y}\right)dx\,dy`,
+  hook: '«Ку по икс минус Пэ по игрек»: буквы перекрещиваются. Q стоит при dy, а дифференцируется по x.',
+  npp: 'Площадь сечения по контуру: S = ½∮(x dy − y dx). Так CAD считает площади сечений труб и каналов.',
+  trap: 'Обход против часовой стрелки (область слева). При обходе по часовой знак меняется.',
+  gap: { tex: T`\oint_L P\,dx+Q\,dy=\iint_D\left(\gap-\frac{\partial P}{\partial y}\right)dx\,dy`, a: T`\frac{\partial Q}{\partial x}`, o: [T`\frac{\partial P}{\partial x}`, T`\frac{\partial Q}{\partial y}`, T`\frac{\partial P}{\partial y}`] },
+  bad: [{ tex: T`\oint_L P\,dx+Q\,dy=\iint_D\left(\frac{\partial P}{\partial y}-\frac{\partial Q}{\partial x}\right)dx\,dy`, why: 'Знак перевёрнут: так было бы при обходе по часовой стрелке.' }] },
+{ id: 'm4', r: 'math', s: 3, topic: 'Теория поля', name: 'Теорема Остроградского–Гаусса',
+  tex: T`\oiint_S \vec F\cdot d\vec S=\iiint_V \operatorname{div}\vec F\,dV`,
+  hook: '«Сколько вытекло через стенки, столько родилось внутри». div — плотность источников.',
+  npp: 'Так выводят уравнение баланса нейтронов и уравнение теплопроводности: утечка через поверхность равна источникам в объёме.',
+  trap: 'Поверхность замкнутая, нормаль внешняя.',
+  gap: { tex: T`\oiint_S \vec F\cdot d\vec S=\iiint_V \gap\,dV`, a: T`\operatorname{div}\vec F`, o: [T`\operatorname{rot}\vec F`, T`|\vec F|`, T`\nabla^2\vec F`] },
+  bad: [{ tex: T`\oiint_S \vec F\cdot d\vec S=\iiint_V \operatorname{rot}\vec F\,dV`, why: 'rot — из формулы Стокса (контур и поверхность). Для объёма нужна div.' }] },
+{ id: 'm5', r: 'math', s: 3, topic: 'Теория поля', name: 'Формула Стокса',
+  tex: T`\oint_L \vec F\cdot d\vec l=\iint_S \operatorname{rot}\vec F\cdot d\vec S`,
+  hook: 'Циркуляция по краю равна сумме «вихрей» на натянутой на край плёнке. Формула Грина — это Стокс на плоскости.',
+  npp: 'Из неё следует закон полного тока ∮H·dl = I: ток в шинах генератора создаёт магнитное поле вокруг.',
+  trap: 'Обход L и нормаль S связаны правилом правого винта.',
+  gap: { tex: T`\oint_L \vec F\cdot d\vec l=\iint_S \gap\cdot d\vec S`, a: T`\operatorname{rot}\vec F`, o: [T`\operatorname{div}\vec F`, T`\vec F`, T`\nabla^2\vec F`] },
+  bad: [{ tex: T`\oint_L \vec F\cdot d\vec l=\iiint_V \operatorname{rot}\vec F\,dV`, why: 'Контур ограничивает поверхность, а не объём.' }] },
+{ id: 'm6', r: 'math', s: 3, topic: 'Ряды', name: 'Признак Даламбера',
+  tex: T`q=\lim_{n\to\infty}\left|\frac{a_{n+1}}{a_n}\right|:\quad q<1\Rightarrow\text{сходится},\;\;q>1\Rightarrow\text{расходится}`,
+  hook: 'Даламбер любит факториалы и показательные функции: n! и 3ⁿ красиво сокращаются в отношении. При q = 1 признак молчит.',
+  npp: 'Сходимость рядов по собственным функциям при решении уравнения диффузии нейтронов проверяют так.',
+  trap: 'q = 1 ничего не доказывает: и Σ1/n (расходится), и Σ1/n² (сходится) дают q = 1.',
+  gap: { tex: T`q=\lim_{n\to\infty}\left|\frac{\gap}{a_n}\right|`, a: T`a_{n+1}`, o: [T`a_{n-1}`, T`a_{2n}`, T`n\,a_n`] },
+  bad: [{ tex: T`q=\lim_{n\to\infty}\left|\frac{a_{n+1}}{a_n}\right|:\quad q>1\Rightarrow\text{сходится}`, why: 'Наоборот: при q > 1 члены растут, ряд расходится.' }] },
+{ id: 'm7', r: 'math', s: 3, topic: 'Ряды', name: 'Ряд Маклорена',
+  tex: T`f(x)=\sum_{n=0}^{\infty}\frac{f^{(n)}(0)}{n!}\,x^n`,
+  hook: '«Производная в нуле на факториал». Каждый следующий член подгоняет ещё одну производную графика в точке 0.',
+  npp: 'Линеаризация: при малых x оставляют 1–2 члена. Так получают e^(−Σx) ≈ 1 − Σx для тонкого слоя защиты.',
+  trap: 'В знаменателе n!, а производная берётся в точке 0, а не в x.',
+  gap: { tex: T`f(x)=\sum_{n=0}^{\infty}\frac{f^{(n)}(0)}{\gap}\,x^n`, a: T`n!`, o: [T`n`, T`(n+1)!`, T`2^n`] },
+  bad: [{ tex: T`f(x)=\sum_{n=0}^{\infty}\frac{f^{(n)}(x)}{n!}\,x^n`, why: 'Производная должна быть в центре разложения, в точке 0.' }] },
+{ id: 'm8', r: 'math', s: 3, topic: 'Ряды', name: 'Ряд для sin x',
+  tex: T`\sin x=x-\frac{x^3}{3!}+\frac{x^5}{5!}-\dots`,
+  hook: 'Синус нечётный, поэтому только нечётные степени. Косинус чётный: 1 − x²/2! + x⁴/4! − … У eˣ все знаки плюс.',
+  npp: 'sin x ≈ x при малых углах: так линеаризуют уравнения маятника и колебаний трубок парогенератора.',
+  trap: 'У sin x нет члена x². Знаки чередуются.',
+  gap: { tex: T`\sin x=x-\frac{x^3}{\gap}+\frac{x^5}{5!}-\dots`, a: T`3!`, o: [T`3`, T`2!`, T`2`] },
+  bad: [{ tex: T`\sin x=1-\frac{x^2}{2!}+\frac{x^4}{4!}-\dots`, why: 'Это ряд для cos x.' }] },
+{ id: 'm9', r: 'math', s: 3, topic: 'Дифференциальные уравнения', name: 'ЛОДУ 2-го порядка: комплексные корни',
+  tex: T`k_{1,2}=\alpha\pm i\beta\;\Rightarrow\;y=e^{\alpha x}\left(C_1\cos\beta x+C_2\sin\beta x\right)`,
+  hook: 'α — затухание (огибающая), β — частота. Комплексные корни означают колебания.',
+  npp: 'Затухающие колебания давления в компенсаторе давления и мощности реактора описываются этим решением.',
+  trap: 'В экспоненте α, внутри cos и sin β. Не наоборот.',
+  gap: { tex: T`y=e^{\gap}\left(C_1\cos\beta x+C_2\sin\beta x\right)`, a: T`\alpha x`, o: [T`\beta x`, T`-\alpha x`, T`x`] },
+  bad: [{ tex: T`k_{1,2}=\alpha\pm i\beta\;\Rightarrow\;y=e^{\beta x}\left(C_1\cos\alpha x+C_2\sin\alpha x\right)`, why: 'α и β перепутаны.' }] },
+{ id: 'm10', r: 'math', s: 3, topic: 'Дифференциальные уравнения', name: 'Кратный корень характеристического уравнения',
+  tex: T`k_1=k_2=k\;\Rightarrow\;y=(C_1+C_2x)\,e^{kx}`,
+  hook: 'Два одинаковых корня дали бы одно и то же решение. Умножь второе на x, чтобы они «разошлись».',
+  npp: 'Критическое демпфирование: система регулирования возвращается к норме быстрее всего и без колебаний.',
+  trap: 'C₁e^{kx} + C₂e^{kx} — это одно решение, а нужно два независимых.',
+  gap: { tex: T`y=(C_1+\gap)\,e^{kx}`, a: T`C_2x`, o: [T`C_2`, T`C_2x^2`, T`C_2e^{x}`] },
+  bad: [{ tex: T`k_1=k_2=k\;\Rightarrow\;y=C_1e^{kx}+C_2e^{kx}`, why: 'Это одно решение. Второе — x·e^{kx}.' }] },
+{ id: 'm11', r: 'math', s: 3, topic: 'Дифференциальные уравнения', name: 'Линейное ДУ 1-го порядка: накопление изотопа',
+  tex: T`\frac{dN}{dt}=Q-\lambda N,\;N(0)=0\;\Rightarrow\;N(t)=\frac{Q}{\lambda}\left(1-e^{-\lambda t}\right)`,
+  hook: 'Ведро с дыркой: приток Q, утечка λN. Уровень растёт и выходит на «полку» Q/λ.',
+  npp: 'Так накапливается любой изотоп при облучении: насыщение наступает через несколько периодов полураспада.',
+  trap: 'При t → ∞ ответ Q/λ, а не бесконечность. Проверяй предел.',
+  gap: { tex: T`N(t)=\frac{Q}{\lambda}\left(1-\gap\right)`, a: T`e^{-\lambda t}`, o: [T`e^{\lambda t}`, T`\lambda t`, T`e^{-t/\lambda}`] },
+  bad: [{ tex: T`\frac{dN}{dt}=Q-\lambda N,\;N(0)=0\;\Rightarrow\;N(t)=\frac{Q}{\lambda}e^{-\lambda t}`, why: 'Это убывание, а при N(0) = 0 количество растёт.' }] },
+{ id: 'm12', r: 'math', s: 4, topic: 'Ряды Фурье', name: 'Коэффициенты Фурье',
+  tex: T`a_n=\frac{1}{\pi}\int_{-\pi}^{\pi}f(x)\cos nx\,dx,\qquad b_n=\frac{1}{\pi}\int_{-\pi}^{\pi}f(x)\sin nx\,dx`,
+  hook: '«Проекция на гармонику»: умножь на cos nx и усредни. a₀/2 — просто среднее значение функции.',
+  npp: 'Разложение распределения нейтронного потока и температуры по гармоникам при решении уравнений в частных производных.',
+  trap: 'Для чётной f все bₙ = 0, для нечётной все aₙ = 0. Проверь чётность до счёта.',
+  gap: { tex: T`a_n=\gap\int_{-\pi}^{\pi}f(x)\cos nx\,dx`, a: T`\frac{1}{\pi}`, o: [T`\frac{1}{2\pi}`, T`\pi`, T`\frac{2}{\pi}`] },
+  bad: [{ tex: T`a_n=\frac{1}{\pi}\int_{-\pi}^{\pi}f(x)\sin nx\,dx`, why: 'aₙ — при косинусе, bₙ — при синусе.' }] },
+{ id: 'm13', r: 'math', s: 4, topic: 'ТФКП', name: 'Формула Эйлера',
+  tex: T`e^{i\varphi}=\cos\varphi+i\sin\varphi`,
+  hook: 'Точка на единичной окружности: cos — по горизонтали, sin — по вертикали. При φ = π получается e^{iπ} + 1 = 0.',
+  npp: 'Переменный ток и колебания пишут как Re(A·e^{iωt}): производная превращается в умножение на iω.',
+  trap: 'i стоит при sin, а не при cos.',
+  gap: { tex: T`e^{i\varphi}=\cos\varphi+\gap`, a: T`i\sin\varphi`, o: [T`\sin\varphi`, T`-i\sin\varphi`, T`i\cos\varphi`] },
+  bad: [{ tex: T`e^{i\varphi}=\sin\varphi+i\cos\varphi`, why: 'cos и sin поменяли местами: при φ = 0 должно получиться 1.' }] },
+{ id: 'm14', r: 'math', s: 4, topic: 'Теория вероятностей', name: 'Распределение Пуассона',
+  tex: T`P(k)=\frac{\lambda^k e^{-\lambda}}{k!}`,
+  hook: '«Лямбда в степени k, е в минус лямбда, на k факториал». Редкие независимые события: распады, отказы.',
+  npp: 'Число отсчётов детектора за время t распределено по Пуассону: среднее λ, дисперсия тоже λ, погрешность счёта √N.',
+  trap: 'Матожидание и дисперсия обе равны λ.',
+  gap: { tex: T`P(k)=\frac{\lambda^k\,\gap}{k!}`, a: T`e^{-\lambda}`, o: [T`e^{\lambda}`, T`e^{-k}`, T`\lambda^{-k}`] },
+  bad: [{ tex: T`P(k)=\frac{\lambda^k e^{-\lambda}}{k}`, why: 'В знаменателе k!, иначе сумма вероятностей не равна 1.' }] },
+
+/* ---------- ФИЗИКА ---------- */
+{ id: 'p1', r: 'phys', s: 3, topic: 'Электростатика', name: 'Закон Кулона',
+  tex: T`F=k\,\frac{|q_1q_2|}{\varepsilon r^2},\qquad k=\frac{1}{4\pi\varepsilon_0}\approx 9\cdot10^{9}\ \frac{\text{Н·м}^2}{\text{Кл}^2}`,
+  hook: 'Та же форма, что у тяготения Gm₁m₂/r², только заряды вместо масс. «Девять на десять в девятой».',
+  npp: 'Кулоновский барьер: протону трудно подойти к ядру, а нейтрон без заряда входит свободно. Поэтому реактор работает на нейтронах.',
+  trap: 'r в квадрате. ε среды в знаменателе: в воде (ε ≈ 81) сила в 81 раз слабее.',
+  gap: { tex: T`F=k\,\frac{|q_1q_2|}{\varepsilon\,\gap}`, a: T`r^2`, o: [T`r`, T`r^3`, T`\sqrt r`] },
+  bad: [{ tex: T`F=k\,\frac{|q_1q_2|}{\varepsilon r}`, why: 'Расстояние должно быть в квадрате.' }] },
+{ id: 'p2', r: 'phys', s: 3, topic: 'Электростатика', name: 'Теорема Гаусса',
+  tex: T`\oiint_S \vec E\cdot d\vec S=\frac{q_{\text{внутр}}}{\varepsilon_0}`,
+  hook: 'Поток через замкнутую поверхность считает только заряды внутри. Внешние линии входят и выходят, их вклад ноль.',
+  npp: 'Поле нити, цилиндра, сферы получается в одну строку: так считают ионизационные камеры и кабели.',
+  trap: 'На ε₀ делят, а не умножают. Заряды снаружи не учитывают.',
+  gap: { tex: T`\oiint_S \vec E\cdot d\vec S=\frac{q_{\text{внутр}}}{\gap}`, a: T`\varepsilon_0`, o: [T`4\pi\varepsilon_0`, T`\mu_0`, T`4\pi`] },
+  bad: [{ tex: T`\oiint_S \vec E\cdot d\vec S=q_{\text{внутр}}\,\varepsilon_0`, why: 'ε₀ стоит в знаменателе.' }] },
+{ id: 'p3', r: 'phys', s: 3, topic: 'Электростатика', name: 'Плоский конденсатор и его энергия',
+  tex: T`C=\frac{\varepsilon\varepsilon_0 S}{d},\qquad W=\frac{CU^2}{2}`,
+  hook: 'Больше пластины — больше места для заряда; больше зазор — слабее связь. Энергия «по-квадратному», как mv²/2 и kx²/2.',
+  npp: 'Ёмкостные датчики уровня: у воды ε ≈ 81, у пара ≈ 1, на границе ёмкость резко меняется.',
+  trap: 'd в знаменателе, и W = CU²/2, а не CU².',
+  gap: { tex: T`C=\frac{\varepsilon\varepsilon_0 S}{\gap}`, a: T`d`, o: [T`d^2`, T`S`, T`4\pi d`] },
+  bad: [{ tex: T`C=\frac{\varepsilon\varepsilon_0 d}{S},\qquad W=\frac{CU^2}{2}`, why: 'Перевёрнуто: ёмкость растёт с площадью и падает с зазором.' },
+        { tex: T`C=\frac{\varepsilon\varepsilon_0 S}{d},\qquad W=CU^2`, why: 'Потеряна двойка в энергии.' }] },
+{ id: 'p4', r: 'phys', s: 3, topic: 'Постоянный ток', name: 'Закон Ома в дифференциальной форме',
+  tex: T`\vec j=\sigma\vec E=\frac{\vec E}{\rho}`,
+  hook: '«Жэ равно сигма Е»: плотность тока = проводимость × поле. Проинтегрируй по проводу — получишь I = U/R.',
+  npp: 'Тепло в проводнике w = jE = j²/σ. Так считают нагрев токоподводов и электронагревателей компенсатора давления.',
+  trap: 'σ — проводимость (См/м), ρ = 1/σ — удельное сопротивление.',
+  gap: { tex: T`\vec j=\gap\,\vec E`, a: T`\sigma`, o: [T`\rho`, T`\varepsilon_0`, T`\mu`] },
+  bad: [{ tex: T`\vec j=\rho\vec E`, why: 'ρ — сопротивление: правильно j = E/ρ = σE.' }] },
+{ id: 'p5', r: 'phys', s: 3, topic: 'Магнитное поле', name: 'Поле прямого тока',
+  tex: T`B=\frac{\mu_0 I}{2\pi r}`,
+  hook: '2πr — длина окружности вокруг провода, циркуляция B по ней равна μ₀I. Отсюда формула за 5 секунд.',
+  npp: 'Электродинамические силы между шинами генератора при коротком замыкании: F/l = μ₀I₁I₂/(2πd).',
+  trap: 'r в первой степени: провод бесконечный, а не точка.',
+  gap: { tex: T`B=\frac{\mu_0 I}{\gap}`, a: T`2\pi r`, o: [T`4\pi r^2`, T`2r`, T`\pi r^2`] },
+  bad: [{ tex: T`B=\frac{\mu_0 I}{4\pi r^2}`, why: 'Так спадает поле точечного источника. У бесконечного провода 2πr.' }] },
+{ id: 'p6', r: 'phys', s: 3, topic: 'Магнитное поле', name: 'Сила Лоренца и радиус орбиты',
+  tex: T`\vec F=q\vec E+q\left[\vec v\times\vec B\right],\qquad R=\frac{mv}{|q|B}`,
+  hook: 'Магнитная сила всегда перпендикулярна скорости: работы не совершает, только поворачивает. Тяжелее частица — больше радиус.',
+  npp: 'Электромагнитное разделение изотопов: ²³⁵U и ²³⁸U в одном поле летят по разным радиусам.',
+  trap: 'Магнитное поле не меняет энергию частицы, только направление скорости.',
+  gap: { tex: T`R=\frac{\gap}{|q|B}`, a: T`mv`, o: [T`qv`, T`m`, T`mv^2`] },
+  bad: [{ tex: T`\vec F=q\vec E+q\left[\vec v\times\vec B\right],\qquad R=\frac{|q|B}{mv}`, why: 'Перевёрнуто: чем больше импульс, тем больше радиус.' }] },
+{ id: 'p7', r: 'phys', s: 3, topic: 'Электромагнитная индукция', name: 'Закон Фарадея',
+  tex: T`\mathcal{E}_i=-\frac{d\Phi}{dt}`,
+  hook: 'Минус — это правило Ленца: индукционный ток мешает изменению потока. «Природа упрямая».',
+  npp: 'Турбогенератор АЭС: вращающийся ротор меняет поток через обмотки статора, получается 50 Гц.',
+  trap: 'ЭДС зависит от скорости изменения потока, а не от самого потока.',
+  gap: { tex: T`\mathcal{E}_i=-\frac{\gap}{dt}`, a: T`d\Phi`, o: [T`\Phi`, T`dB`, T`dI`] },
+  bad: [{ tex: T`\mathcal{E}_i=\frac{\Phi}{t}`, why: 'Нужна производная потока, и со знаком минус.' }] },
+{ id: 'p8', r: 'phys', s: 3, topic: 'Электромагнитная индукция', name: 'Энергия магнитного поля',
+  tex: T`W=\frac{LI^2}{2},\qquad w=\frac{B^2}{2\mu_0}`,
+  hook: 'Близнец CU²/2: индуктивность играет роль массы, ток — скорости. Всё квадратичное делится на 2.',
+  npp: 'При разрыве цепи с большой L энергия LI²/2 уходит в дугу. Поэтому у генераторных выключателей дугогашение.',
+  trap: 'В плотности энергии μ₀ в знаменателе.',
+  gap: { tex: T`W=\frac{L\,\gap}{2}`, a: T`I^2`, o: [T`I`, T`U^2`, T`\Phi`] },
+  bad: [{ tex: T`W=LI^2,\qquad w=\frac{B^2}{2\mu_0}`, why: 'Потеряна двойка.' },
+        { tex: T`W=\frac{LI^2}{2},\qquad w=\frac{\mu_0B^2}{2}`, why: 'μ₀ в знаменателе: w = B²/(2μ₀).' }] },
+{ id: 'p9', r: 'phys', s: 3, topic: 'Колебания', name: 'Формула Томсона',
+  tex: T`\omega_0=\frac{1}{\sqrt{LC}},\qquad T=2\pi\sqrt{LC}`,
+  hook: 'У пружинного маятника T = 2π√(m/k). В контуре L — «масса», 1/C — «жёсткость». Подставь и получишь Томсона.',
+  npp: 'Резонансные фильтры в системах контроля и управления.',
+  trap: 'Корень из произведения LC. √(L/C) — это волновое сопротивление в омах, а не время.',
+  gap: { tex: T`T=2\pi\sqrt{\gap}`, a: T`LC`, o: [T`\frac{L}{C}`, T`\frac{C}{L}`, T`L+C`] },
+  bad: [{ tex: T`\omega_0=\frac{1}{\sqrt{LC}},\qquad T=2\pi\sqrt{\frac{L}{C}}`, why: '√(L/C) измеряется в омах, а не в секундах.' }] },
+{ id: 'p10', r: 'phys', s: 3, topic: 'Уравнения Максвелла', name: 'Закон полного тока с током смещения',
+  tex: T`\oint_L \vec H\cdot d\vec l=I+\frac{d}{dt}\iint_S \vec D\cdot d\vec S`,
+  hook: 'Магнитное поле рождают двое: ток проводимости и меняющееся электрическое поле (ток смещения).',
+  npp: 'Без тока смещения нет электромагнитных волн, а значит нет радиосвязи и беспроводной телеметрии.',
+  trap: 'Ток смещения — это dD/dt, а не движение зарядов.',
+  gap: { tex: T`\oint_L \vec H\cdot d\vec l=I+\frac{d}{dt}\iint_S \gap\cdot d\vec S`, a: T`\vec D`, o: [T`\vec B`, T`\vec H`, T`\vec j`] },
+  bad: [{ tex: T`\oint_L \vec H\cdot d\vec l=I+\frac{d}{dt}\iint_S \vec B\cdot d\vec S`, why: 'Меняющееся B даёт электрическое поле (закон Фарадея). Здесь нужно D.' }] },
+{ id: 'p11', r: 'phys', s: 4, topic: 'Волновая оптика', name: 'Дифракционная решётка',
+  tex: T`d\sin\varphi=k\lambda,\qquad k=0,\pm1,\pm2,\dots`,
+  hook: 'Разность хода от соседних щелей равна целому числу длин волн, и волны усиливаются.',
+  npp: 'Спектрометры для анализа состава. Для кристаллов то же условие называется условием Брэгга: 2d sin θ = kλ.',
+  trap: 'd — период решётки, а не ширина щели. Максимальный порядок k ≤ d/λ.',
+  gap: { tex: T`d\,\gap=k\lambda`, a: T`\sin\varphi`, o: [T`\cos\varphi`, T`\tan\varphi`, T`\varphi`] },
+  bad: [{ tex: T`d\sin\varphi=(2k+1)\frac{\lambda}{2}`, why: 'Это условие минимума, а не главного максимума.' }] },
+{ id: 'p12', r: 'phys', s: 4, topic: 'Квантовая физика', name: 'Уравнение Эйнштейна для фотоэффекта',
+  tex: T`h\nu=A_{\text{вых}}+\frac{mv_{\max}^2}{2}`,
+  hook: 'Фотон платит «за выход» A, сдачу электрон получает как кинетическую энергию.',
+  npp: 'Фотоэлектронные умножители сцинтилляционных детекторов излучения работают на фотоэффекте.',
+  trap: 'Энергия электронов зависит от частоты света, а не от интенсивности. Интенсивность меняет только их число.',
+  gap: { tex: T`h\nu=\gap+\frac{mv_{\max}^2}{2}`, a: T`A_{\text{вых}}`, o: [T`mc^2`, T`kT`, T`\frac{h}{\lambda}`] },
+  bad: [{ tex: T`h\nu=A_{\text{вых}}-\frac{mv_{\max}^2}{2}`, why: 'Энергия фотона = работа выхода ПЛЮС кинетическая энергия.' }] },
+{ id: 'p13', r: 'phys', s: 4, topic: 'Квантовая физика', name: 'Длина волны де Бройля',
+  tex: T`\lambda=\frac{h}{p}=\frac{h}{\sqrt{2mE}}`,
+  hook: '«Аш на пэ». Чем больше импульс, тем короче волна.',
+  npp: 'У теплового нейтрона (0,025 эВ) λ ≈ 0,18 нм — как межатомные расстояния. Поэтому нейтронография «видит» кристаллы.',
+  trap: 'Для медленной частицы p = √(2mE). У фотона другое: p = E/c.',
+  gap: { tex: T`\lambda=\frac{h}{\gap}`, a: T`p`, o: [T`E`, T`mv^2`, T`m`] },
+  bad: [{ tex: T`\lambda=\frac{p}{h}`, why: 'Перевёрнуто.' }] },
+{ id: 'p14', r: 'phys', s: 4, topic: 'Ядерная физика', name: 'Закон радиоактивного распада',
+  tex: T`N=N_0e^{-\lambda t},\qquad T_{1/2}=\frac{\ln2}{\lambda}\approx\frac{0{,}693}{\lambda}`,
+  hook: 'Каждый период полураспада остаётся половина. Через 10 периодов — меньше 0,1 %, потому что 2¹⁰ ≈ 1000.',
+  npp: 'Остаточное тепловыделение, выдержка отработавшего топлива в бассейне, йод-131 (8 сут), ксенон-135 (9,1 ч).',
+  trap: 'λ и T₁/₂ обратно пропорциональны. Активность A = λN, а не N.',
+  gap: { tex: T`T_{1/2}=\frac{\gap}{\lambda}`, a: T`\ln2`, o: [T`1`, T`\lg2`, T`e`] },
+  bad: [{ tex: T`N=N_0e^{-\lambda t},\qquad T_{1/2}=\lambda\ln2`, why: 'Перевёрнуто: быстрый распад (большое λ) даёт короткий период.' }] },
+{ id: 'p15', r: 'phys', s: 4, topic: 'Ядерная физика', name: 'Энергия связи ядра',
+  tex: T`E_{\text{св}}=\left(Zm_p+(A-Z)\,m_n-M_{\text{я}}\right)c^2,\qquad 1\ \text{а.е.м.}\cdot c^2=931{,}5\ \text{МэВ}`,
+  hook: 'Ядро легче своих деталей. «Пропавшая» масса и есть энергия связи: 931,5 МэВ на каждую а.е.м. дефекта.',
+  npp: 'Деление ²³⁵U даёт около 200 МэВ: у осколков энергия связи на нуклон ≈ 8,5 МэВ, у урана ≈ 7,6 МэВ.',
+  trap: 'Берётся масса ЯДРА. Если подставляешь массу атома, вместо m_p бери массу атома водорода.',
+  gap: { tex: T`E_{\text{св}}=\left(Zm_p+\gap\,m_n-M_{\text{я}}\right)c^2`, a: T`(A-Z)`, o: [T`A`, T`Z`, T`(A+Z)`] },
+  bad: [{ tex: T`E_{\text{св}}=\left(M_{\text{я}}-Zm_p-(A-Z)\,m_n\right)c^2`, why: 'Знак перевёрнут: сумма масс нуклонов больше массы ядра.' }] },
+{ id: 'p16', r: 'phys', s: 4, topic: 'Тепловое излучение', name: 'Закон Стефана–Больцмана',
+  tex: T`R=\sigma T^4,\qquad \sigma=5{,}67\cdot10^{-8}\ \frac{\text{Вт}}{\text{м}^2\cdot\text{К}^4}`,
+  hook: 'Четвёртая степень: нагрей в 2 раза, и излучение вырастет в 16 раз. σ = 5,67: «пять-шесть-семь, минус восемь».',
+  npp: 'Теплообмен излучением в газовом зазоре твэла и при авариях с осушением активной зоны.',
+  trap: 'T только в кельвинах.',
+  gap: { tex: T`R=\sigma\,\gap`, a: T`T^4`, o: [T`T^2`, T`T`, T`T^3`] },
+  bad: [{ tex: T`R=\sigma T^2,\qquad \sigma=5{,}67\cdot10^{-8}\ \frac{\text{Вт}}{\text{м}^2\cdot\text{К}^4}`, why: 'Степень четыре — она же в единицах σ (К⁴).' }] },
+
+/* ---------- ХИМИЯ ---------- */
+{ id: 'c1', r: 'chem', s: 3, topic: 'Химическая термодинамика', name: 'Следствие из закона Гесса',
+  tex: T`\Delta_rH^\circ=\sum\nu\,\Delta_fH^\circ_{\text{прод}}-\sum\nu\,\Delta_fH^\circ_{\text{исх}}`,
+  hook: '«Конец минус начало», как Δ в физике. У простых веществ (O₂, H₂, Fe) ΔfH° = 0.',
+  npp: 'Пароциркониевая реакция Zr + 2H₂O → ZrO₂ + 2H₂ выделяет ≈ 6,5 МДж на кг циркония. Главная опасность при перегреве оболочек.',
+  trap: 'Не забыть стехиометрические коэффициенты ν.',
+  gap: { tex: T`\Delta_rH^\circ=\sum\nu\,\Delta_fH^\circ_{\gap}-\sum\nu\,\Delta_fH^\circ_{\text{исх}}`, a: T`\text{прод}`, o: [T`\text{исх}`, T`\text{газ}`, T`\text{тв}`] },
+  bad: [{ tex: T`\Delta_rH^\circ=\sum\nu\,\Delta_fH^\circ_{\text{исх}}-\sum\nu\,\Delta_fH^\circ_{\text{прод}}`, why: 'Перевёрнуто: из продуктов вычитают исходные.' }] },
+{ id: 'c2', r: 'chem', s: 3, topic: 'Химическая термодинамика', name: 'Энергия Гиббса',
+  tex: T`\Delta G=\Delta H-T\Delta S,\qquad \Delta G<0\Rightarrow\text{процесс идёт сам}`,
+  hook: 'При высокой T вклад TΔS растёт: в жару побеждает энтропия.',
+  npp: 'Устойчивость оксидных плёнок и коррозия сталей в теплоносителе при 300 °C оцениваются по ΔG.',
+  trap: 'ΔH в кДж, ΔS в Дж/К: переведи до вычитания. T в кельвинах.',
+  gap: { tex: T`\Delta G=\Delta H-\gap`, a: T`T\Delta S`, o: [T`\Delta S`, T`T\Delta H`, T`\frac{\Delta S}{T}`] },
+  bad: [{ tex: T`\Delta G=\Delta H+T\Delta S,\qquad \Delta G<0\Rightarrow\text{процесс идёт сам}`, why: 'Знак минус: рост энтропии помогает процессу.' }] },
+{ id: 'c3', r: 'chem', s: 3, topic: 'Химическое равновесие', name: 'ΔG° и константа равновесия',
+  tex: T`\Delta G^\circ=-RT\ln K`,
+  hook: 'K > 1 ⇒ ln K > 0 ⇒ ΔG° < 0: равновесие сдвинуто к продуктам.',
+  npp: 'Растворимость продуктов коррозии в контуре и выбор pH теплоносителя считают через константы равновесия.',
+  trap: 'R = 8,314 Дж/(моль·К), а ΔG° часто дают в кДж/моль.',
+  gap: { tex: T`\Delta G^\circ=-\gap\ln K`, a: T`RT`, o: [T`R`, T`T`, T`nF`] },
+  bad: [{ tex: T`\Delta G^\circ=RT\ln K`, why: 'Потерян минус: при K > 1 ΔG° должна быть отрицательной.' }] },
+{ id: 'c4', r: 'chem', s: 3, topic: 'Кинетика', name: 'Правило Вант-Гоффа',
+  tex: T`\frac{v_{T_2}}{v_{T_1}}=\gamma^{\frac{T_2-T_1}{10}},\qquad \gamma=2\ldots4`,
+  hook: '«Каждые 10 градусов — в 2–4 раза быстрее». Плюс 30° при γ = 2 — в 8 раз.',
+  npp: 'Скорость коррозии растёт с температурой, поэтому водно-химический режим горячего контура строже.',
+  trap: 'Разность температур делится на 10 и стоит в показателе степени.',
+  gap: { tex: T`\frac{v_{T_2}}{v_{T_1}}=\gamma^{\frac{T_2-T_1}{\gap}}`, a: T`10`, o: [T`100`, T`273`, T`2`] },
+  bad: [{ tex: T`\frac{v_{T_2}}{v_{T_1}}=\gamma\cdot\frac{T_2-T_1}{10}`, why: 'Зависимость показательная, а не линейная.' }] },
+{ id: 'c5', r: 'chem', s: 3, topic: 'Кинетика', name: 'Уравнение Аррениуса',
+  tex: T`k=A\,e^{-\frac{E_a}{RT}}`,
+  hook: 'Реагирует только доля молекул с энергией выше барьера Eₐ. Чем горячее, тем эта доля больше.',
+  npp: 'Ресурс оборудования: ускоренные испытания при высокой T пересчитывают на рабочую температуру по Аррениусу.',
+  trap: 'Минус в показателе и T в кельвинах.',
+  gap: { tex: T`k=A\,e^{-\frac{\gap}{RT}}`, a: T`E_a`, o: [T`\Delta H`, T`\Delta S`, T`T`] },
+  bad: [{ tex: T`k=A\,e^{\frac{E_a}{RT}}`, why: 'Без минуса скорость падала бы с ростом температуры.' }] },
+{ id: 'c6', r: 'chem', s: 3, topic: 'Кинетика', name: 'Реакция первого порядка',
+  tex: T`\ln\frac{c_0}{c}=kt,\qquad t_{1/2}=\frac{\ln2}{k}`,
+  hook: 'Это тот же закон, что и радиоактивный распад: c = c₀e^{−kt}. Выучи один раз, используй в химии и физике.',
+  npp: 'Распад изотопа — реакция первого порядка: период полураспада не зависит от количества вещества.',
+  trap: 'У первого порядка t₁/₂ не зависит от c₀. У второго зависит: t₁/₂ = 1/(kc₀).',
+  gap: { tex: T`t_{1/2}=\frac{\ln2}{\gap}`, a: T`k`, o: [T`c_0`, T`kc_0`, T`2k`] },
+  bad: [{ tex: T`\ln\frac{c_0}{c}=kt,\qquad t_{1/2}=\frac{\ln2}{kc_0}`, why: 'У реакции первого порядка период полураспада от c₀ не зависит.' }] },
+{ id: 'c7', r: 'chem', s: 3, topic: 'Растворы', name: 'Водородный показатель',
+  tex: T`\mathrm{pH}=-\lg[\mathrm{H^+}],\qquad \mathrm{pH}+\mathrm{pOH}=14\ \ (25\,^\circ\mathrm{C})`,
+  hook: 'Минус десятичный логарифм. Сдвиг pH на 1 — это изменение [H⁺] в 10 раз.',
+  npp: 'В первом контуре ВВЭР среду держат слабощелочной (KOH, аммиак), чтобы снизить коррозию, а борная кислота H₃BO₃ поглощает нейтроны.',
+  trap: 'pH + pOH = 14 только при 25 °C. При 300 °C нейтральная точка около 5,6.',
+  gap: { tex: T`\mathrm{pH}=-\gap[\mathrm{H^+}]`, a: T`\lg`, o: [T`\ln`, T`\log_2`, T`\frac{1}{14}`] },
+  bad: [{ tex: T`\mathrm{pH}=\lg[\mathrm{H^+}],\qquad \mathrm{pH}+\mathrm{pOH}=14\ \ (25\,^\circ\mathrm{C})`, why: 'Нужен минус: [H⁺] меньше 1, его логарифм отрицательный.' }] },
+{ id: 'c8', r: 'chem', s: 3, topic: 'Электрохимия', name: 'Уравнение Нернста',
+  tex: T`E=E^\circ+\frac{0{,}059}{n}\lg\frac{[\mathrm{Ox}]}{[\mathrm{Red}]}\quad(25\,^\circ\mathrm{C})`,
+  hook: '«0,059 на n». Больше окислителя — выше потенциал.',
+  npp: 'Контактная коррозия: в паре разнородных металлов растворяется тот, у кого потенциал отрицательнее.',
+  trap: 'n — число электронов в полуреакции. Окисленная форма в числителе.',
+  gap: { tex: T`E=E^\circ+\frac{0{,}059}{\gap}\lg\frac{[\mathrm{Ox}]}{[\mathrm{Red}]}`, a: T`n`, o: [T`F`, T`RT`, T`2`] },
+  bad: [{ tex: T`E=E^\circ+\frac{0{,}059}{n}\lg\frac{[\mathrm{Red}]}{[\mathrm{Ox}]}\quad(25\,^\circ\mathrm{C})`, why: 'При знаке «+» окисленная форма в числителе.' }] },
+{ id: 'c9', r: 'chem', s: 3, topic: 'Электрохимия', name: 'Закон Фарадея для электролиза',
+  tex: T`m=\frac{M\,I\,t}{n\,F},\qquad F=96\,485\ \frac{\text{Кл}}{\text{моль}}`,
+  hook: '«МИТ на эН-эФ». Заряд It делим на заряд моля электронов nF, получаем моли, умножаем на M.',
+  npp: 'Электролизёры для водорода и водоподготовки, скорость растворения анода при коррозии.',
+  trap: 't в секундах, n — заряд иона (для Cu²⁺ n = 2).',
+  gap: { tex: T`m=\frac{M\,I\,t}{\gap}`, a: T`nF`, o: [T`F`, T`n`, T`nR`] },
+  bad: [{ tex: T`m=\frac{M\,n\,F}{I\,t}`, why: 'Перевёрнуто: масса растёт с током и временем.' }] },
+{ id: 'c10', r: 'chem', s: 3, topic: 'Кинетика', name: 'Закон действующих масс',
+  tex: T`v=k\,[\mathrm{A}]^a[\mathrm{B}]^b\quad\text{для }a\mathrm{A}+b\mathrm{B}\to\dots`,
+  hook: 'Чтобы прореагировать, молекулам надо встретиться: чем их больше, тем чаще встречи.',
+  npp: 'Радиолиз воды в активной зоне: скорость рекомбинации H₂ и O₂ зависит от их концентраций.',
+  trap: 'Степени равны коэффициентам только для элементарных реакций. Твёрдые вещества в выражение не входят.',
+  gap: { tex: T`v=k\,[\mathrm{A}]^{\gap}[\mathrm{B}]^b`, a: T`a`, o: [T`1`, T`b`, T`a+b`] },
+  bad: [{ tex: T`v=k\left([\mathrm{A}]+[\mathrm{B}]\right)`, why: 'Концентрации перемножаются, а не складываются.' }] },
+{ id: 'c11', r: 'chem', s: 3, topic: 'Газы', name: 'Уравнение Менделеева–Клапейрона',
+  tex: T`pV=\nu RT=\frac{m}{M}RT`,
+  hook: '«ПэВэ равно НюЭрТэ». R = 8,314: «восемь-три-один-четыре».',
+  npp: 'Давление газа под оболочкой твэла (гелий плюс газообразные продукты деления) растёт с выгоранием.',
+  trap: 'T в кельвинах, V в м³, p в Па.',
+  gap: { tex: T`pV=\gap RT`, a: T`\nu`, o: [T`m`, T`M`, T`\rho`] },
+  bad: [{ tex: T`p=\nu RTV`, why: 'Объём в знаменателе: p = νRT/V.' }] },
+{ id: 'c12', r: 'chem', s: 3, topic: 'Растворы', name: 'Закон эквивалентов (титрование)',
+  tex: T`C_{\text{н},1}V_1=C_{\text{н},2}V_2`,
+  hook: 'Эквивалент на эквивалент: сколько кислотных частиц отдал один раствор, столько основных принял другой.',
+  npp: 'Концентрацию борной кислоты в теплоносителе определяют титрованием, а от неё зависит реактивность.',
+  trap: 'Нормальность, а не молярность. Для H₂SO₄ Cн = 2·C_M.',
+  gap: { tex: T`C_{\text{н},1}V_1=\gap`, a: T`C_{\text{н},2}V_2`, o: [T`\frac{C_{\text{н},2}}{V_2}`, T`C_{\text{н},2}V_1`, T`\frac{V_2}{C_{\text{н},2}}`] },
+  bad: [{ tex: T`\frac{C_{\text{н},1}}{V_1}=\frac{C_{\text{н},2}}{V_2}`, why: 'Количество эквивалентов — это концентрация, умноженная на объём.' }] },
+
+/* ---------- МЕХАНИКА ---------- */
+{ id: 't1', r: 'mech', s: 3, topic: 'Статика', name: 'Равновесие плоской системы сил',
+  tex: T`\sum F_{kx}=0,\qquad\sum F_{ky}=0,\qquad\sum M_O(\vec F_k)=0`,
+  hook: '«Не едет вбок, не едет вверх, не крутится». Три уравнения — не больше трёх неизвестных реакций.',
+  npp: 'Расчёт опор трубопроводов и конструкций машзала.',
+  trap: 'Реакции связей тоже силы: нарисуй их все до того, как писать уравнения.',
+  gap: { tex: T`\sum F_{kx}=0,\quad\sum F_{ky}=0,\quad\gap=0`, a: T`\sum M_O(\vec F_k)`, o: [T`\sum m_k`, T`\sum F_k^2`, T`\sum \vec F_k\cdot\vec v_k`] },
+  bad: [{ tex: T`\sum F_{kx}=0,\qquad\sum F_{ky}=0`, why: 'Нет уравнения моментов: тело может вращаться.' }] },
+{ id: 't2', r: 'mech', s: 3, topic: 'Статика', name: 'Момент силы относительно точки',
+  tex: T`\vec M_O=\vec r\times\vec F,\qquad M_O=\pm F\,h`,
+  hook: 'Плечо h — ПЕРПЕНДИКУЛЯР от точки до линии действия силы. Гаечный ключ держат за конец, чтобы h было больше.',
+  npp: 'Моменты затяжки шпилек главного разъёма реактора задаются строго: от них зависит плотность фланца.',
+  trap: 'h — не расстояние до точки приложения силы. «+» при повороте против часовой стрелки.',
+  gap: { tex: T`M_O=\pm F\,\gap`, a: T`h`, o: [T`r`, T`h^2`, T`\frac{1}{h}`] },
+  bad: [{ tex: T`\vec M_O=\vec r\times\vec F,\qquad M_O=\pm\frac{F}{h}`, why: 'Момент — произведение силы на плечо.' }] },
+{ id: 't3', r: 'mech', s: 3, topic: 'Кинематика', name: 'Вращение тела вокруг оси',
+  tex: T`v=\omega R,\qquad a_\tau=\varepsilon R,\qquad a_n=\omega^2R`,
+  hook: 'Любая линейная величина = угловая × радиус. Нормальное ускорение направлено к оси: ω²R = v²/R.',
+  npp: 'Ротор на 3000 об/мин: ω ≈ 314 рад/с, на радиусе 1 м a_n ≈ 10⁵ м/с². Отсюда огромные напряжения в лопатках.',
+  trap: 'ω в рад/с: n об/мин → ω = πn/30.',
+  gap: { tex: T`a_n=\gap R`, a: T`\omega^2`, o: [T`\varepsilon`, T`\omega`, T`\varepsilon^2`] },
+  bad: [{ tex: T`v=\omega R,\qquad a_\tau=\varepsilon R,\qquad a_n=\varepsilon R`, why: 'εR — касательное ускорение, нормальное равно ω²R.' }] },
+{ id: 't4', r: 'mech', s: 3, topic: 'Кинематика', name: 'Сложное движение точки: Кориолис',
+  tex: T`\vec a_a=\vec a_e+\vec a_r+\vec a_c,\qquad\vec a_c=2\left[\vec\omega_e\times\vec v_r\right]`,
+  hook: '«Два омега на вэ относительное». Абсолютное = переносное + относительное + Кориолис.',
+  npp: 'Кориолисовы силы закручивают поток в насосах и турбинах. На этом эффекте работают кориолисовы расходомеры.',
+  trap: 'a_c = 0, если переносное движение поступательное или v_r ∥ ω_e. Двойку не терять.',
+  gap: { tex: T`\vec a_c=\gap\left[\vec\omega_e\times\vec v_r\right]`, a: T`2`, o: [T`1`, T`\frac12`, T`\omega_e`] },
+  bad: [{ tex: T`\vec a_a=\vec a_e+\vec a_r+\vec a_c,\qquad\vec a_c=\left[\vec\omega_e\times\vec v_r\right]`, why: 'Потеряна двойка.' }] },
+{ id: 't5', r: 'mech', s: 3, topic: 'Кинематика', name: 'Мгновенный центр скоростей',
+  tex: T`v_A=\omega\cdot AP,\qquad\vec v_A\perp AP`,
+  hook: 'В данный момент тело как будто вращается вокруг P. У катящегося колеса P — точка касания, а верх колеса летит со скоростью 2v.',
+  npp: 'Кинематика кривошипно-шатунных механизмов насосов и приводов арматуры.',
+  trap: 'P лежит на пересечении перпендикуляров к скоростям двух точек. Ускорение точки P при этом не ноль.',
+  gap: { tex: T`v_A=\omega\cdot\gap`, a: T`AP`, o: [T`\frac{1}{AP}`, T`AP^2`, T`\varepsilon`] },
+  bad: [{ tex: T`v_A=\frac{\omega}{AP},\qquad\vec v_A\perp AP`, why: 'Скорость растёт с расстоянием от МЦС.' }] },
+{ id: 't6', r: 'mech', s: 3, topic: 'Динамика', name: 'Теорема об изменении кинетической энергии',
+  tex: T`T_2-T_1=\sum A_k`,
+  hook: 'Работа всех сил = изменение энергии. Ни времени, ни ускорений: идеально, когда известны путь и силы.',
+  npp: 'Выбег ГЦН после обесточивания: маховик запасает энергию и поддерживает расход теплоносителя.',
+  trap: 'Для изменяемой системы учитывай работу внутренних сил. Реакция при качении без проскальзывания работы не совершает.',
+  gap: { tex: T`T_2-T_1=\gap`, a: T`\sum A_k`, o: [T`\sum F_k`, T`\sum M_k`, T`\sum m_kv_k`] },
+  bad: [{ tex: T`T_2-T_1=\sum F_k`, why: 'Слева энергия (Дж), справа должна быть работа, а не сила.' }] },
+{ id: 't7', r: 'mech', s: 3, topic: 'Динамика', name: 'Кинетическая энергия при плоском движении',
+  tex: T`T=\frac{mv_C^2}{2}+\frac{J_C\,\omega^2}{2}`,
+  hook: 'Теорема Кёнига: «катится = едет + крутится».',
+  npp: 'Запас энергии маховика ГЦН считают по Jω²/2.',
+  trap: 'Сплошной диск при качении: T = ¾mv², а не ½mv².',
+  gap: { tex: T`T=\frac{mv_C^2}{2}+\frac{\gap\,\omega^2}{2}`, a: T`J_C`, o: [T`m`, T`mR`, T`\varepsilon`] },
+  bad: [{ tex: T`T=\frac{mv_C^2}{2}`, why: 'Забыта энергия вращения.' }] },
+{ id: 't8', r: 'mech', s: 3, topic: 'Динамика', name: 'Теорема Гюйгенса–Штейнера',
+  tex: T`J=J_C+md^2`,
+  hook: 'Относительно оси через центр масс момент инерции наименьший. Сдвинул ось на d — доплати md².',
+  npp: 'Инерция роторов и валов, собранных из простых тел.',
+  trap: 'Оси параллельны, J_C — через центр масс. Стержень: mL²/12 у центра, mL²/3 у конца.',
+  gap: { tex: T`J=J_C+\gap`, a: T`md^2`, o: [T`md`, T`m^2d`, T`\frac{md^2}{2}`] },
+  bad: [{ tex: T`J=J_C-md^2`, why: 'Момент инерции растёт при удалении оси.' }] },
+{ id: 't9', r: 'mech', s: 4, topic: 'Аналитическая механика', name: 'Уравнение Лагранжа 2-го рода',
+  tex: T`\frac{d}{dt}\frac{\partial T}{\partial\dot q_j}-\frac{\partial T}{\partial q_j}=Q_j`,
+  hook: '«Дэ по дэ-тэ от дэ-Т по ку с точкой, минус дэ-Т по ку». По уравнению на каждую координату, реакции идеальных связей исчезают.',
+  npp: 'Колебания систем с несколькими степенями свободы: трубопроводы, роторы, опоры.',
+  trap: 'Сначала дифференцируют по q̇, потом берут полную производную по времени.',
+  gap: { tex: T`\frac{d}{dt}\frac{\partial T}{\partial\gap}-\frac{\partial T}{\partial q_j}=Q_j`, a: T`\dot q_j`, o: [T`q_j`, T`t`, T`\ddot q_j`] },
+  bad: [{ tex: T`\frac{d}{dt}\frac{\partial T}{\partial\dot q_j}+\frac{\partial T}{\partial q_j}=Q_j`, why: 'Между слагаемыми минус.' }] },
+{ id: 't10', r: 'mech', s: 3, topic: 'Динамика', name: 'Принцип Даламбера',
+  tex: T`\sum\vec F_k+\sum\vec N_k+\sum\vec\Phi_k=0,\qquad\vec\Phi=-m\vec a`,
+  hook: 'Добавь силу инерции −ma и решай задачу динамики как статику.',
+  npp: 'Нагрузки на опоры оборудования при сейсмическом воздействии считают через силы инерции.',
+  trap: 'Сила инерции направлена против ускорения.',
+  gap: { tex: T`\vec\Phi=\gap`, a: T`-m\vec a`, o: [T`m\vec a`, T`-m\vec v`, T`\frac{\vec a}{m}`] },
+  bad: [{ tex: T`\sum\vec F_k+\sum\vec N_k+\sum\vec\Phi_k=0,\qquad\vec\Phi=m\vec a`, why: 'Сила инерции направлена против ускорения.' }] },
+{ id: 't11', r: 'mech', s: 3, topic: 'Сопротивление материалов', name: 'Закон Гука и удлинение стержня',
+  tex: T`\sigma=E\varepsilon,\qquad\Delta l=\frac{Nl}{EA}`,
+  hook: '«Сигма равно Е эпсилон». Больше сила и длина — длиннее; больше жёсткость EA — короче.',
+  npp: 'Защемлённый трубопровод при нагреве: σ = EαΔT. Сталь, ΔT = 250 К: σ ≈ 2·10¹¹·1,2·10⁻⁵·250 ≈ 600 МПа. Поэтому нужны компенсаторы.',
+  trap: 'E — модуль Юнга (сталь ≈ 200 ГПа), A — площадь сечения, ε безразмерна.',
+  gap: { tex: T`\Delta l=\frac{Nl}{\gap}`, a: T`EA`, o: [T`E`, T`A`, T`El`] },
+  bad: [{ tex: T`\sigma=E\varepsilon,\qquad\Delta l=\frac{NEA}{l}`, why: 'Жёсткость EA уменьшает удлинение, она в знаменателе.' }] },
+{ id: 't12', r: 'mech', s: 4, topic: 'Сопротивление материалов', name: 'Нормальные напряжения при изгибе',
+  tex: T`\sigma_{\max}=\frac{M_{\max}}{W_x}\le[\sigma],\qquad W_x=\frac{bh^2}{6}`,
+  hook: 'Балка «на ребре» прочнее: высота h входит в квадрате. Поэтому двутавр, а не плоская полоса.',
+  npp: 'Проверка прочности трубопроводов и балок перекрытий под тяжёлым оборудованием.',
+  trap: 'W — момент сопротивления (м³), а не момент инерции (м⁴).',
+  gap: { tex: T`W_x=\frac{bh^2}{\gap}`, a: T`6`, o: [T`12`, T`2`, T`3`] },
+  bad: [{ tex: T`\sigma_{\max}=\frac{M_{\max}}{W_x}\le[\sigma],\qquad W_x=\frac{bh^3}{12}`, why: 'bh³/12 — это момент инерции J_x. W = J/(h/2) = bh²/6.' }] },
+{ id: 't13', r: 'mech', s: 4, topic: 'Колебания', name: 'Собственная частота',
+  tex: T`\omega_0=\sqrt{\frac{c}{m}},\qquad T=2\pi\sqrt{\frac{m}{c}}`,
+  hook: 'Жёстче пружина — быстрее колебания, тяжелее груз — медленнее. Сравни с контуром: m ↔ L, c ↔ 1/C.',
+  npp: 'Вибрация трубок парогенератора: собственную частоту отстраивают от частоты срыва вихрей, чтобы не было резонанса.',
+  trap: 'c — жёсткость в Н/м. Корень, а не первая степень.',
+  gap: { tex: T`\omega_0=\sqrt{\frac{\gap}{m}}`, a: T`c`, o: [T`m`, T`g`, T`c^2`] },
+  bad: [{ tex: T`\omega_0=\sqrt{\frac{m}{c}},\qquad T=2\pi\sqrt{\frac{m}{c}}`, why: 'Перевёрнуто: √(m/c) — это T/2π, а не ω₀.' }] },
+];
+
+const UNITS = [
+  ['phys', 'Магнитная индукция B', 'Тл = Н/(А·м)', ['Вб', 'Гн', 'А/м']],
+  ['phys', 'Магнитный поток Φ', 'Вб = Тл·м²', ['Тл', 'Гн', 'В/м']],
+  ['phys', 'Индуктивность L', 'Гн = Вб/А', ['Ф', 'Вб', 'Тл']],
+  ['phys', 'Электроёмкость C', 'Ф = Кл/В', ['Гн', 'Кл', 'В/м']],
+  ['phys', 'Электрическая постоянная ε₀', 'Ф/м', ['Гн/м', 'Ф', 'Н/Кл']],
+  ['phys', 'Магнитная постоянная μ₀', 'Гн/м', ['Ф/м', 'Тл', 'Гн']],
+  ['phys', 'Напряжённость электрического поля E', 'В/м = Н/Кл', ['В', 'Кл/м²', 'А/м']],
+  ['phys', 'Напряжённость магнитного поля H', 'А/м', ['Тл', 'В/м', 'Вб']],
+  ['phys', 'Плотность тока j', 'А/м²', ['А', 'А/м', 'Кл/м³']],
+  ['phys', 'Удельная проводимость σ', 'См/м', ['Ом·м', 'См', 'Ом/м']],
+  ['phys', 'Постоянная распада λ', 'с⁻¹', ['с', 'Бк·с', 'моль/с']],
+  ['phys', 'Активность', 'Бк = 1 распад/с', ['Гр', 'Зв', 'Дж/кг']],
+  ['phys', 'Поглощённая доза', 'Гр = Дж/кг', ['Зв·с', 'Бк', 'Дж/с']],
+  ['phys', 'Микроскопическое сечение σ', 'барн = 10⁻²⁸ м²', ['барн = 10⁻²⁴ м²', 'см⁻¹', 'м³']],
+  ['phys', 'Макроскопическое сечение Σ', 'см⁻¹', ['барн', 'см²', 'см³']],
+  ['phys', 'Плотность потока нейтронов φ', 'нейтр./(см²·с)', ['нейтр./с', 'нейтр./см³', 'Бк/см²']],
+  ['phys', 'Постоянная Планка h', 'Дж·с', ['Дж/с', 'Дж/Гц²', 'эВ/с']],
+  ['phys', 'Постоянная Стефана–Больцмана σ', 'Вт/(м²·К⁴)', ['Дж/К', 'Вт/(м·К)', 'Вт/м²']],
+  ['chem', 'Энергия Гиббса реакции ΔG', 'кДж/моль', ['кДж/(моль·К)', 'Дж/К', 'кДж·моль']],
+  ['chem', 'Энтропия S', 'Дж/(моль·К)', ['кДж/моль', 'К/Дж', 'Дж·К']],
+  ['chem', 'Константа скорости 1-го порядка', 'с⁻¹', ['моль/(л·с)', 'л/(моль·с)', 'с']],
+  ['chem', 'Константа скорости 2-го порядка', 'л/(моль·с)', ['с⁻¹', 'моль/(л·с)', 'л·моль/с']],
+  ['chem', 'Газовая постоянная R', 'Дж/(моль·К)', ['Дж/К', 'Дж/моль', 'Па·м³']],
+  ['chem', 'Постоянная Фарадея F', 'Кл/моль', ['Кл', 'А·с/кг', 'моль/Кл']],
+  ['chem', 'Молярная концентрация эквивалента Cн', 'моль-экв/л', ['г/л', 'моль/кг', '%']],
+  ['mech', 'Момент силы M', 'Н·м', ['Н/м', 'Дж/с', 'кг·м²']],
+  ['mech', 'Момент инерции тела J', 'кг·м²', ['Н·м', 'кг·м/с', 'кг/м²']],
+  ['mech', 'Угловое ускорение ε', 'рад/с²', ['рад/с', 'м/с²', 'об/мин']],
+  ['mech', 'Жёсткость пружины c', 'Н/м', ['Па', 'Н·м', 'Н/м²']],
+  ['mech', 'Модуль Юнга E', 'Па', ['Н', 'Н/м', 'безразмерен']],
+  ['mech', 'Момент сопротивления сечения W', 'м³', ['м⁴', 'Н·м', 'м²']],
+  ['mech', 'Осевой момент инерции сечения J_x', 'м⁴', ['кг·м²', 'м³', 'м²']],
+  ['mech', 'Импульс тела p', 'кг·м/с', ['Н/с', 'кг·м²/с', 'Дж/с']],
+  ['mech', 'Момент импульса L', 'кг·м²/с', ['кг·м/с', 'Н·м', 'Дж/с']],
+].map(([r, q, a, o], i) => ({ id: 'u' + (i + 1), r, q, a, o }));
+
+const TIPS = {
+  math: [
+    'Перед решением ДУ определи тип: с разделяющимися переменными, однородное, линейное, Бернулли, в полных дифференциалах. Тип — половина решения.',
+    'В кратном интеграле сначала нарисуй область. Порядок интегрирования выбирай так, чтобы область задавалась одним неравенством.',
+    'Ряд: сначала проверь необходимый признак aₙ → 0. Если не стремится к нулю, ряд расходится, дальше считать не нужно.',
+    'Знакочередующийся ряд: признак Лейбница даёт сходимость, а абсолютную или условную проверяй по ряду из модулей.',
+    'Неоднородное ЛДУ: если правая часть совпадает с решением однородного (резонанс), умножь подбор частного решения на x.',
+    'Любая замена в кратном интеграле приносит якобиан: полярные и цилиндрические — r, сферические — r² sin θ.',
+  ],
+  phys: [
+    'Проверь размерность ответа. 30 секунд, и половина ошибок поймана.',
+    'Поле с симметрией (шар, цилиндр, плоскость) — сразу теорема Гаусса, не интегрируй по Кулону.',
+    'Направление B — правило буравчика, направление силы Лоренца — правило левой руки. Проговаривай вслух, пока рисуешь.',
+    'Переводи всё в СИ в начале решения: см → м, мкФ → Ф, МэВ → Дж (1 эВ = 1,6·10⁻¹⁹ Дж).',
+    'В оптике сначала найди разность хода Δ: Δ = kλ — максимум, Δ = (2k+1)λ/2 — минимум.',
+    'В ядерных задачах считай энергию в МэВ, а массу в а.е.м.: 1 а.е.м. ↔ 931,5 МэВ.',
+  ],
+  chem: [
+    'ΔH в кДж, ΔS в Дж/К. Переведи до того, как подставлять в ΔG = ΔH − TΔS.',
+    'Температура в кельвинах везде, кроме правила Вант-Гоффа: там важна только разность.',
+    'Окислительно-восстановительные реакции уравнивай методом полуреакций: сначала электроны, потом H⁺ или OH⁻ и вода.',
+    'Принцип Ле Шателье: система сопротивляется. Нагрев смещает равновесие в сторону эндотермической реакции.',
+    'pH сильной кислоты: [H⁺] = C·(число H⁺). Слабой: [H⁺] = √(Kₐ·C).',
+    'В каждом ионном уравнении проверяй баланс и атомов, и зарядов.',
+  ],
+  mech: [
+    'Сначала рисунок: все активные силы и все реакции связей. Без рисунка уравнения равновесия превращаются в лотерею.',
+    'Уравнение моментов составляй относительно точки, через которую проходит больше всего неизвестных реакций.',
+    'Реакция получилась отрицательной? Это не ошибка: она просто направлена против стрелки на рисунке.',
+    'В плоском движении сначала найди МЦС: скорости всех точек получаются без формул сложения.',
+    'Кориолис появляется, только если переносное движение вращательное. При поступательном его нет.',
+    'Выбирай теорему по данным: дан путь — энергия, дано время — импульс, есть вращение — момент импульса.',
+  ],
+};
+
+const MODES = {
+  reactor: { name: 'Реактор', types: ['gap', 'trap', 'unit'],
+    desc: 'Держи реактор в критическом состоянии. Каждая ошибка добавляет реактивность. Три ошибки подряд без исправления — и срабатывает аварийная защита. Пять верных ответов подряд — оператор вводит стержни и снимает одну ошибку.' },
+  trap: { name: 'Верно или ловушка', types: ['trap'], clock: 60, desc: 'За 60 секунд реши, верна ли формула или в ней спрятана типичная ошибка из контрольной.' },
+  gap: { name: 'Заполни пропуск', types: ['gap'], count: 10, desc: '10 формул с пропуском. Выбери недостающую часть.' },
+  unit: { name: 'Размерности', types: ['unit'], count: 10, desc: '10 величин. Выбери единицу СИ: лучшая проверка ответа на контрольной.' },
+};
+const BETA = 0.0065, STEP = 0.0022, NOMINAL = 3000;
+
+/* ======================= STATE ======================= */
+const KEY = 'zona.v1';
+const autoSem = () => { const m = new Date().getMonth() + 1; return m >= 2 && m <= 7 ? 4 : 3; };
+const fresh = () => ({ v: 1, prog: {}, log: {}, best: {}, set: { rooms: ROOMS.map(r => r.id), sem: autoSem(), hide: false } });
+const valid = s => s && typeof s === 'object' && s.prog && typeof s.prog === 'object' && s.set && typeof s.set === 'object';
+function hydrate(s) { const f = fresh(); return { ...f, ...s, log: s.log || {}, best: s.best || {}, set: { ...f.set, ...s.set } }; }
+let S = fresh();
+try { const raw = JSON.parse(localStorage.getItem(KEY)); if (valid(raw)) S = hydrate(raw); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+let dayShift = 0;
+const today = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 6e4) / 864e5) + dayShift; };
+const dayKey = n => new Date(n * 864e5).toISOString().slice(0, 10);
+
+/* SM-2 style scheduler. grade: 0 wrong, 2 right */
+function schedule(prev, grade, t) {
+  const p = prev ? { ...prev } : { e: 2.5, i: 0, r: 0, l: 0 };
+  if (grade === 0) { p.e -= 0.2; p.i = 0; p.r = 0; p.l += 1; }
+  else { p.i = p.r === 0 ? 1 : p.r === 1 ? Math.max(3, p.i + 1) : Math.max(p.i + 1, Math.round(p.i * p.e)); p.r += 1; }
+  p.e = Math.round(Math.min(3, Math.max(1.3, p.e)) * 100) / 100;
+  p.i = Math.min(p.i, 365); p.d = t + p.i;
+  return p;
+}
+const isDue = id => { const p = S.prog[id]; return !!p && p.d <= today(); };
+function record(id, ok) {
+  const t = today(), p = S.prog[id];
+  if (!ok) S.prog[id] = schedule(p, 0, t);
+  else if (!p || p.d <= t) S.prog[id] = schedule(p, 2, t);   // a correct answer moves the card only when it is due
+  const k = dayKey(t); const day = S.log[k] || (S.log[k] = { n: 0, ok: 0 });
+  day.n += 1; if (ok) day.ok += 1;
+}
+const stageOf = p => !p ? 'new' : p.i < 3 ? 'learning' : p.i < 21 ? 'maturing' : 'stable';
+const STAGES = ['new', 'learning', 'maturing', 'stable'];
+const STAGE_NAME = { new: 'Новая', learning: 'Учу', maturing: 'Закрепляю', stable: 'Навсегда' };
+function streak() {
+  let t = today(), n = 0;
+  if (!(S.log[dayKey(t)] || {}).n) t -= 1;
+  while ((S.log[dayKey(t)] || {}).n) { n += 1; t -= 1; }
+  return n;
+}
+
+/* ======================= HELPERS ======================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const mcache = new Map();
+function m(tex) {
+  if (mcache.has(tex)) return mcache.get(tex);
+  let out;
+  try { out = window.temml ? temml.renderToString(tex, { trust: true, throwOnError: true }) : '<code>' + esc(tex) + '</code>'; }
+  catch (e) { out = '<code>' + esc(tex) + '</code>'; }
+  mcache.set(tex, out); return out;
+}
+const gapTex = (tex, fill) => tex.replace('\\gap', fill == null ? T`\class{gap}{\;?\;}` : T`\class{gapok}{` + fill + '}');
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return n + ' ' + (a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many); };
+const roomOf = id => ROOMS.find(r => r.id === id);
+const semOk = c => S.set.sem === 0 || (S.set.sem === 3 ? c.s === 3 : c.s <= 4);
+const cardsIn = room => CARDS.filter(c => c.r === room && semOk(c));
+const unitsIn = room => UNITS.filter(u => u.r === room);
+const itemsIn = room => [...cardsIn(room), ...unitsIn(room)];
+const allItems = () => ROOMS.flatMap(r => itemsIn(r.id));
+const dayTip = room => { const list = TIPS[room]; return list[(today() + ROOMS.findIndex(r => r.id === room)) % list.length]; };
+let toastTimer;
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2600); }
+function stackHTML(items) {
+  const c = { new: 0, learning: 0, maturing: 0, stable: 0 };
+  items.forEach(x => { c[stageOf(S.prog[x.id])] += 1; });
+  return { c, html: STAGES.filter(k => c[k]).map(k => `<i class="c-${k}" style="flex:${c[k]}"></i>`).join('') };
+}
+
+/* ======================= STATUS / WHERE ======================= */
+function renderStatus() {
+  $('st-due').textContent = allItems().filter(x => isDue(x.id)).length;
+  const s = streak(); $('st-streak').textContent = plural(s, 'день', 'дня', 'дней');
+  $('seg-sem').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.v) === S.set.sem)));
+  $('sem-note').textContent = S.set.sem === 4 ? 'Темы 4-го семестра плюс повторение 3-го' : S.set.sem === 3 ? 'Осенний семестр 2-го курса' : 'Весь 2-й курс';
+}
+
+/* ======================= ROOMS ======================= */
+let openRoom = null;
+function renderRooms() {
+  const v = $('view-rooms');
+  if (openRoom) return renderRoom(v, openRoom);
+  v.innerHTML = `<div class="rooms">${ROOMS.map(r => {
+    const items = cardsIn(r.id), st = stackHTML(items), due = itemsIn(r.id).filter(x => isDue(x.id)).length;
+    return `<button class="room r-${r.id}" data-room="${r.id}">
+      <span class="head"><span class="name">${r.name}</span><span class="count">${due ? due + ' к повтору' : plural(items.length, 'формула', 'формулы', 'формул')}</span></span>
+      <p class="sub">${esc(r.sub)}</p>
+      <span class="stack" aria-label="Освоено ${st.c.stable} из ${items.length}">${st.html}</span>
+      <p class="tip"><b>Совет дня.</b> ${esc(dayTip(r.id))}</p>
+    </button>`; }).join('')}</div>
+    <div class="legend">${STAGES.map(k => `<span><i class="c-${k}"></i>${STAGE_NAME[k]}</span>`).join('')}</div>
+    <p class="hint">Открой аудиторию: у каждой формулы есть приём для запоминания, место на АЭС и типичная ловушка с контрольной. Потом закрепи в играх.</p>`;
+}
+function renderRoom(v, id) {
+  const r = roomOf(id), cards = cardsIn(id), topics = [...new Set(cards.map(c => c.topic))];
+  v.innerHTML = `<div class="roomhead r-${id}">
+      <button class="back" data-act="rooms">← Все аудитории</button>
+      <h2 style="font:500 1.375rem/1.2 var(--font-display)">${r.name}</h2>
+      <div class="tipbox r-${id}"><span class="label">Совет дня</span>${esc(dayTip(id))}</div>
+      <div class="row">
+        <button class="btn small" data-play="reactor" data-only="${id}">Реактор по этой аудитории</button>
+        <button class="btn ghost small" data-play="gap" data-only="${id}">Пропуски</button>
+        <button class="btn ghost small" data-act="hide" aria-pressed="${S.set.hide}">${S.set.hide ? 'Показать формулы' : 'Самопроверка: скрыть формулы'}</button>
+      </div>
+    </div>
+    ${cards.length ? '' : '<p class="hint">В этом семестре тем нет. Выберите «Все темы».</p>'}
+    ${topics.map(tp => `<div class="topic"><span class="label">${esc(tp)}</span>${cards.filter(c => c.topic === tp).map(cardHTML).join('')}</div>`).join('')}`;
+}
+function cardHTML(c) {
+  const st = stageOf(S.prog[c.id]);
+  return `<article class="fcard" id="card-${c.id}">
+    <div class="head"><h3>${esc(c.name)}</h3><span class="pill s-${st}">${STAGE_NAME[st]}</span></div>
+    <div class="formula${S.set.hide ? ' veiled' : ''}" data-veil="${c.id}">${m(c.tex)}${S.set.hide ? '<button class="btn ghost small reveal" data-act="reveal">Вспомни и нажми</button>' : ''}</div>
+    <dl class="facts">
+      <div><dt>Запомнить</dt><dd>${esc(c.hook)}</dd></div>
+      <div class="npp"><dt>На АЭС</dt><dd>${esc(c.npp)}</dd></div>
+      <div class="trap"><dt>Ловушка</dt><dd>${esc(c.trap)}</dd></div>
+    </dl>
+  </article>`;
+}
+
+/* ======================= GAMES ======================= */
+let G = null, tick = null, advanceTimer = null;
+function poolFor(rooms) {
+  const cards = CARDS.filter(c => rooms.includes(c.r) && semOk(c));
+  const units = UNITS.filter(u => rooms.includes(u.r));
+  return { cards, units };
+}
+function availableTypes(mode, pool) {
+  return MODES[mode].types.filter(t => t === 'unit' ? pool.units.length : pool.cards.length);
+}
+function renderGames() {
+  const v = $('view-games');
+  if (G) return renderStage();
+  const pool = poolFor(S.set.rooms);
+  v.innerHTML = `<div class="chips" aria-label="Аудитории в игре">${ROOMS.map(r =>
+      `<button class="chip r-${r.id}" data-groom="${r.id}" aria-pressed="${S.set.rooms.includes(r.id)}"><span class="dot"></span>${r.name}</button>`).join('')}</div>
+    <div class="games">${Object.entries(MODES).map(([k, md]) => {
+      const ok = availableTypes(k, pool).length > 0;
+      return `<button class="game${k === 'reactor' ? ' hero' : ''}" data-play="${k}" ${ok ? '' : 'disabled'}>
+        <span class="name">${md.name}</span><span class="hint">${esc(md.desc)}</span>
+        <span class="best">${ok ? 'Рекорд: ' + bestText(k) : 'Нет заданий для выбранных аудиторий'}</span></button>`; }).join('')}</div>
+    <p class="hint">Игры сначала дают формулы, которые пора повторить, и те, где ты ошибался. Ошибка возвращает формулу на завтра.</p>`;
+}
+const bestText = k => { const b = S.best[k] || 0; return k === 'reactor' ? b.toLocaleString('ru-RU') + ' МВт·ч' : k === 'trap' ? b + ' очков' : b + ' из 10'; };
+
+function startGame(mode, only) {
+  const rooms = only ? [only] : S.set.rooms;
+  const pool = poolFor(rooms), types = availableTypes(mode, pool);
+  if (!types.length) return toast('В выбранных аудиториях нет заданий для этой игры');
+  stopTimers();
+  G = { mode, only, paused: false, rooms, pool, types, recent: [], n: 0, ok: 0, score: 0, combo: 0, fixStreak: 0, rho: 0, miss: [], q: null, phase: 'ask',
+        clockEnd: MODES[mode].clock ? performance.now() + MODES[mode].clock * 1000 : 0, clockLeft: 0, qEnd: 0, qLimit: 0, flash: '' };
+  nextQ(); show('games');
+}
+function weightOf(id) {
+  const p = S.prog[id];
+  if (!p) return 3;
+  if (p.d <= today()) return 5 + p.l;
+  return p.l ? 1.5 : 0.6;
+}
+function pick(list) {
+  const fresh = list.filter(x => !G.recent.includes(x.id));
+  const from = fresh.length ? fresh : list;
+  const total = from.reduce((s, x) => s + weightOf(x.id), 0);
+  let r = Math.random() * total;
+  for (const x of from) { r -= weightOf(x.id); if (r <= 0) return x; }
+  return from[from.length - 1];
+}
+function makeQ() {
+  const type = G.types[Math.floor(Math.random() * G.types.length)];
+  if (type === 'unit') {
+    const u = pick(G.pool.units);
+    return { type, id: u.id, item: u, options: shuffle([u.a, ...u.o]), answer: u.a };
+  }
+  const c = pick(G.pool.cards);
+  if (type === 'gap') return { type, id: c.id, item: c, options: shuffle([c.gap.a, ...c.gap.o]), answer: c.gap.a };
+  const truth = Math.random() < 0.45 || !c.bad.length;
+  const b = truth ? null : c.bad[Math.floor(Math.random() * c.bad.length)];
+  return { type, id: c.id, item: c, tex: truth ? c.tex : b.tex, truth, why: b ? b.why : '' };
+}
+function nextQ() {
+  clearTimeout(advanceTimer);
+  const md = MODES[G.mode];
+  if (md.count && G.n >= md.count) return endGame();
+  if (md.clock && G.paused) { if (G.clockLeft <= 0) return endGame(); G.clockEnd = performance.now() + G.clockLeft; G.paused = false; }
+  G.q = makeQ(); G.phase = 'ask'; G.choice = null;
+  G.recent.push(G.q.id); if (G.recent.length > 6) G.recent.shift();
+  if (G.mode === 'reactor') { G.qLimit = Math.max(8, 20 - G.n * 0.4) * 1000; G.qEnd = performance.now() + G.qLimit; }
+  renderStage(); startTick();
+}
+function startTick() {
+  stopTick();
+  if (G.mode !== 'reactor' && !MODES[G.mode].clock) return;
+  tick = setInterval(() => {
+    if (!G || G.phase !== 'ask') return;
+    const now = performance.now();
+    if (G.mode === 'reactor') {
+      const left = Math.max(0, G.qEnd - now), bar = $('qtimer');
+      if (bar) { bar.firstElementChild.style.width = (left / G.qLimit * 100) + '%'; bar.classList.toggle('low', left < 3000); }
+      if (left <= 0) answer(null);
+    } else {
+      const left = Math.max(0, G.clockEnd - now), bar = $('qtimer'), lbl = $('clock');
+      if (bar) { bar.firstElementChild.style.width = (left / (MODES[G.mode].clock * 1000) * 100) + '%'; bar.classList.toggle('low', left < 10000); }
+      if (lbl) lbl.textContent = Math.ceil(left / 1000) + ' с';
+      if (left <= 0) endGame();
+    }
+  }, 100);
+}
+const stopTick = () => { clearInterval(tick); tick = null; };
+const stopTimers = () => { stopTick(); clearTimeout(advanceTimer); };
+
+function answer(choice) {
+  if (!G || G.phase !== 'ask') return;
+  const q = G.q;
+  const ok = choice === null ? false : q.type === 'trap' ? choice === q.truth : choice === q.answer;
+  G.choice = choice; G.n += 1; G.lastOk = ok; G.phase = ok ? 'right' : 'wrong'; G.flash = '';
+  record(q.id, ok);
+  if (MODES[G.mode].clock) { G.clockLeft = Math.max(0, G.clockEnd - performance.now()); G.paused = true; }
+  if (ok) {
+    G.ok += 1; G.combo += 1;
+    if (G.mode === 'reactor') {
+      const power = Math.round(NOMINAL * Math.min(1, 0.3 + 0.1 * G.combo));
+      const gain = Math.round(power / 60);
+      G.score += gain; G.flash = '+' + gain + ' МВт·ч';
+      G.fixStreak += 1;
+      if (G.fixStreak >= 5 && G.rho > 0) { G.rho = Math.max(0, G.rho - STEP); G.fixStreak = 0; G.flash = 'Стержни введены: ρ снижена'; }
+    } else if (G.mode === 'trap') { const g = 1 + Math.floor(G.combo / 5); G.score += g; G.flash = '+' + g; }
+    else G.score += 1;
+  } else {
+    G.combo = 0; G.fixStreak = 0;
+    G.miss.push(q);
+    if (G.mode === 'reactor') G.rho += STEP;
+  }
+  save(); renderStatus();
+  if (G.mode === 'reactor' && G.rho >= BETA - 1e-9) { G.phase = 'wrong'; G.scram = true; }
+  renderStage();
+  if (ok) advanceTimer = setTimeout(nextQ, G.mode === 'trap' ? 450 : 750);
+}
+function endGame() {
+  if (!G || G.phase === 'end') return;
+  stopTimers();
+  G.phase = 'end';
+  const prev = S.best[G.mode] || 0;
+  G.record = G.score > prev;
+  if (G.record) S.best[G.mode] = G.score;
+  save(); renderStage(); renderStatus();
+}
+function quitGame() { stopTimers(); G = null; show('games'); }
+
+function hudHTML() {
+  const md = MODES[G.mode];
+  if (G.mode === 'reactor') {
+    const k = (1 / (1 - G.rho)).toFixed(4).replace('.', ',');
+    const power = Math.round(NOMINAL * Math.min(1, 0.3 + 0.1 * G.combo));
+    return `<div class="hud">
+        <div class="cell${G.rho >= 2 * STEP ? ' crit' : ''}"><span class="label">k<sub>эф</sub></span><b>${k}</b></div>
+        <div class="cell"><span class="label">Мощность</span><b>${power.toLocaleString('ru-RU')} МВт</b></div>
+        <div class="cell"><span class="label">Выработка</span><b>${G.score.toLocaleString('ru-RU')} МВт·ч</b></div>
+      </div>
+      <div class="rho"><div class="bar"><i style="width:${Math.min(100, G.rho / BETA * 100)}%"></i></div>
+        <div class="scale"><span>ρ = ${(G.rho / BETA).toFixed(2).replace('.', ',')} β</span><span>АЗ при ρ ≥ β</span></div></div>
+      <div class="timer" id="qtimer"><i style="width:100%"></i></div>`;
+  }
+  if (md.clock) return `<div class="hud"><div class="cell"><span class="label">Время</span><b id="clock">${Math.ceil(Math.max(0, (G.phase === 'ask' ? G.clockEnd - performance.now() : G.clockLeft)) / 1000)} с</b></div>
+      <div class="cell"><span class="label">Серия</span><b>${G.combo}</b></div><div class="cell"><span class="label">Очки</span><b>${G.score}</b></div></div>
+      <div class="timer" id="qtimer"><i style="width:${(G.phase === 'ask' ? G.clockEnd - performance.now() : G.clockLeft) / (md.clock * 1000) * 100}%"></i></div>`;
+  return `<div class="hud"><div class="cell"><span class="label">Вопрос</span><b>${Math.min(G.n + (G.phase === 'ask' ? 1 : 0), md.count)} / ${md.count}</b></div>
+      <div class="cell"><span class="label">Верно</span><b>${G.ok}</b></div></div>`;
+}
+function questionHTML() {
+  const q = G.q, done = G.phase !== 'ask', room = roomOf(q.item.r).name;
+  const optCls = o => !done ? '' : o === q.answer ? ' right' : o === G.choice ? ' wrong' : '';
+  if (q.type === 'unit') return `<div class="q"><p class="ask">${room} · Единица измерения в СИ</p><p class="unitq">${esc(q.item.q)}</p>
+      <div class="opts">${q.options.map((o, i) => `<button class="opt${optCls(o)}" data-opt="${i}" ${done ? 'disabled' : ''}><span class="k">${i + 1}</span>${esc(o)}</button>`).join('')}</div></div>`;
+  if (q.type === 'gap') return `<div class="q"><p class="ask">${room} · ${esc(q.item.name)}</p>
+      <div class="big">${m(gapTex(q.item.gap.tex, done ? q.answer : null))}</div>
+      <div class="opts">${q.options.map((o, i) => `<button class="opt${optCls(o)}" data-opt="${i}" ${done ? 'disabled' : ''}><span class="k">${i + 1}</span>${m(o)}</button>`).join('')}</div></div>`;
+  const cls = v => !done ? '' : v === q.truth ? ' right' : v === G.choice ? ' wrong' : '';
+  return `<div class="q"><p class="ask">${room} · ${esc(q.item.name)}. Формула верна?</p>
+      <div class="big">${m(q.tex)}</div>
+      <div class="tf"><button class="opt${cls(true)}" data-tf="1" ${done ? 'disabled' : ''}>Верно<kbd>←</kbd></button>
+      <button class="opt${cls(false)}" data-tf="0" ${done ? 'disabled' : ''}>Ловушка<kbd>→</kbd></button></div></div>`;
+}
+function feedbackHTML() {
+  const q = G.q;
+  if (G.phase !== 'wrong') return '';
+  let head = G.choice === null ? 'Время вышло' : 'Неверно';
+  let body = '';
+  if (q.type === 'unit') body = `<p>${esc(q.item.q)}: <b>${esc(q.answer)}</b></p>`;
+  else {
+    if (q.type === 'trap' && !q.truth) body += `<p>${esc(q.why)}</p>`;
+    if (q.type === 'trap' && q.truth) body += `<p>Формула была верной.</p>`;
+    body += `<div class="f">${m(q.item.tex)}</div><p class="muted">${esc(q.item.hook)}</p>`;
+  }
+  if (G.scram) head = 'Сработала аварийная защита (АЗ)';
+  return `<div class="fb no"><strong class="no">${head}</strong>${body}
+    <div class="row">${G.scram ? `<button class="btn" data-act="end">Итоги смены<kbd>Enter</kbd></button>` : `<button class="btn" data-act="next">Дальше<kbd>Enter</kbd></button>`}</div></div>`;
+}
+function endHTML() {
+  const md = MODES[G.mode];
+  const scoreText = G.mode === 'reactor' ? G.score.toLocaleString('ru-RU') + ' МВт·ч' : G.mode === 'trap' ? plural(G.score, 'очко', 'очка', 'очков') : G.score + ' из ' + md.count;
+  const title = G.mode === 'reactor' ? (G.scram ? 'Реактор заглушен' : 'Смена окончена') : G.mode === 'trap' ? 'Время вышло' : 'Готово';
+  const uniq = [...new Map(G.miss.map(q => [q.id, q])).values()];
+  return `<div class="q"><span class="label">${md.name}</span>
+    <p class="unitq">${title}: ${scoreText}${G.record ? ' · новый рекорд' : ''}</p>
+    <p class="ask">Ответов: ${G.n}, верных: ${G.ok}${G.n ? ` (${Math.round(G.ok / G.n * 100)} %)` : ''}. Рекорд: ${bestText(G.mode)}.</p>
+    ${uniq.length ? `<span class="label">Повтори эти формулы</span><ul class="endlist">${uniq.slice(0, 8).map(q =>
+      `<li><span>${esc(q.type === 'unit' ? q.item.q : q.item.name)}</span><span>${roomOf(q.item.r).name}</span></li>`).join('')}</ul>` : '<p class="ask">Ни одной ошибки.</p>'}
+    <div class="row"><button class="btn" data-act="again">Ещё раз<kbd>Enter</kbd></button><button class="btn ghost" data-act="quit">К играм</button></div></div>`;
+}
+function renderStage() {
+  const v = $('view-games');
+  const body = G.phase === 'end' ? endHTML() : hudHTML() + questionHTML() + feedbackHTML();
+  v.innerHTML = `<div class="row" style="justify-content:space-between"><span class="label">${MODES[G.mode].name} · ${G.rooms.map(r => roomOf(r).name).join(', ')}</span>
+      ${G.phase === 'end' ? '' : '<button class="btn ghost small" data-act="stop">Завершить</button>'}</div>
+    <div class="stage${G.scram && G.phase !== 'end' ? ' scram' : ''}">${body}${G.flash && G.phase === 'right' ? `<span class="flash">${esc(G.flash)}</span>` : ''}</div>`;
+  const focus = v.querySelector('.fb .btn, .stage .row .btn');
+  if (focus && G.phase !== 'ask' && G.phase !== 'right') focus.focus();
+}
+
+/* ======================= PROGRESS ======================= */
+function renderProgress() {
+  const v = $('view-progress'), items = allItems(), st = stackHTML(items), t = today(), s = streak();
+  v.innerHTML = `<div class="tiles">
+      <div class="tile"><span class="label">Серия</span><b>${plural(s, 'день', 'дня', 'дней')}</b></div>
+      <div class="tile"><span class="label">Ответов сегодня</span><b>${(S.log[dayKey(t)] || {}).n || 0}</b></div>
+      <div class="tile"><span class="label">Навсегда</span><b>${st.c.stable} / ${items.length}</b></div>
+      <div class="tile"><span class="label">Рекорд реактора</span><b>${(S.best.reactor || 0).toLocaleString('ru-RU')}</b></div>
+    </div>
+    <div class="panel"><h2>Аудитории</h2>
+      ${ROOMS.map(r => { const it = itemsIn(r.id), x = stackHTML(it);
+        return `<div class="roomrow"><span>${r.name}</span><span class="stack">${x.html}</span><span>${x.c.stable}/${it.length}</span></div>`; }).join('')}
+      <div class="legend">${STAGES.map(k => `<span><i class="c-${k}"></i>${STAGE_NAME[k]} <b>${st.c[k]}</b></span>`).join('')}</div>
+      <p class="hint">«Навсегда»: формула выдержала паузу в 21 день и больше. Учитываются формулы выбранного семестра и задачи на размерности.</p>
+    </div>
+    <div class="panel"><h2>Рекорды</h2>
+      ${Object.entries(MODES).map(([k, md]) => `<div class="roomrow"><span>${md.name}</span><span></span><span>${bestText(k)}</span></div>`).join('')}
+    </div>
+    <div class="panel"><h2>Резервная копия</h2>
+      <p class="hint">Прогресс хранится только в этом браузере. Чтобы перенести его на другое устройство, создай копию, скопируй текст, вставь его там и нажми «Восстановить».</p>
+      <textarea id="backup" aria-label="Текст резервной копии" spellcheck="false"></textarea>
+      <div class="row"><button class="btn ghost small" id="b-export">Создать копию</button><button class="btn ghost small" id="b-copy">Копировать</button>
+        <button class="btn ghost small" id="b-import">Восстановить</button><button class="btn danger small" id="b-reset">Сбросить прогресс</button></div>
+    </div>`;
+}
+
+/* ======================= NAV + EVENTS ======================= */
+let tab = 'rooms';
+function show(name) {
+  tab = name;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  ['rooms', 'games', 'progress'].forEach(n => { $('view-' + n).hidden = n !== name; });
+  $('where').hidden = name === 'games' && !!G;
+  if (name === 'rooms') renderRooms(); if (name === 'games') renderGames(); if (name === 'progress') renderProgress();
+}
+document.querySelector('.tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.tab === 'rooms') openRoom = null;
+  if (G && b.dataset.tab !== 'games') { stopTimers(); G = null; }
+  show(b.dataset.tab);
+});
+$('seg-sem').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.set.sem = Number(b.dataset.v); save(); renderStatus(); show(tab); });
+
+document.addEventListener('click', e => {
+  const play = e.target.closest('[data-play]'); if (play) return startGame(play.dataset.play, play.dataset.only || null);
+  const room = e.target.closest('[data-room]'); if (room) { openRoom = room.dataset.room; renderRooms(); window.scrollTo(0, 0); return; }
+  const gr = e.target.closest('[data-groom]');
+  if (gr) { const id = gr.dataset.groom, i = S.set.rooms.indexOf(id); if (i >= 0) S.set.rooms.splice(i, 1); else S.set.rooms.push(id); save(); return renderGames(); }
+  const opt = e.target.closest('[data-opt]'); if (opt && G) return answer(G.q.options[Number(opt.dataset.opt)]);
+  const tf = e.target.closest('[data-tf]'); if (tf && G) return answer(tf.dataset.tf === '1');
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'rooms') { openRoom = null; renderRooms(); }
+  else if (act === 'hide') { S.set.hide = !S.set.hide; save(); renderRooms(); }
+  else if (act === 'reveal') { const f = a.closest('.formula'); f.classList.remove('veiled'); a.remove(); }
+  else if (act === 'next') nextQ();
+  else if (act === 'end') endGame();
+  else if (act === 'stop') endGame();
+  else if (act === 'again') startGame(G.mode, G.only);
+  else if (act === 'quit') quitGame();
+});
+document.addEventListener('keydown', e => {
+  if (!G || tab !== 'games' || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (G.phase === 'ask') {
+    if (G.q.type === 'trap') {
+      if (e.key === 'ArrowLeft' || e.key === '1') { e.preventDefault(); answer(true); }
+      else if (e.key === 'ArrowRight' || e.key === '2') { e.preventDefault(); answer(false); }
+    } else if (e.key >= '1' && e.key <= '4') { const o = G.q.options[Number(e.key) - 1]; if (o !== undefined) answer(o); }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (G.phase === 'wrong') { if (G.scram) endGame(); else nextQ(); }
+    else if (G.phase === 'end') startGame(G.mode, G.only);
+  }
+});
+
+$('view-progress').addEventListener('click', async e => {
+  const id = e.target.id;
+  if (id === 'b-export') { $('backup').value = JSON.stringify(S); $('backup').select(); toast('Копия создана. Скопируй текст'); }
+  else if (id === 'b-copy') {
+    if (!$('backup').value) $('backup').value = JSON.stringify(S);
+    try { await navigator.clipboard.writeText($('backup').value); toast('Скопировано'); } catch (err) { $('backup').select(); toast('Выдели текст и скопируй вручную'); }
+  } else if (id === 'b-import') {
+    let data; try { data = JSON.parse($('backup').value); } catch (err) { data = null; }
+    if (!valid(data)) return toast('Это не копия «Активной зоны». Вставь текст копии целиком');
+    S = hydrate(data); save(); renderStatus(); renderProgress(); toast('Прогресс восстановлен');
+  } else if (id === 'b-reset') {
+    const b = e.target;
+    if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Нажми ещё раз, чтобы стереть всё'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Сбросить прогресс'; } }, 4000); return; }
+    S = { ...S, prog: {}, log: {}, best: {} }; save(); renderStatus(); renderProgress(); toast('Прогресс стёрт');
+  }
+});
+
+/* test hook */
+window.__zona = { CARDS, UNITS, TIPS, schedule, state: () => S, game: () => G, gapTex,
+  shiftDays(n) { dayShift += n; renderStatus(); show(tab); } };
+
+renderStatus(); show('rooms');
+})();
+</script>
+<!-- app:end -->
+</body>
+</html>
